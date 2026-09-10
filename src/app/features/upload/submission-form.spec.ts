@@ -1,7 +1,11 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
 import { FormGroup } from '@angular/forms';
-import { SubmissionForm, SubmissionMetadata } from './submission-form';
+import { provideRouter } from '@angular/router';
+import { Account } from '../../core/account/account';
+import { SubmissionMetadata } from '../../core/models';
+import { SubmissionForm } from './submission-form';
+
+const ACCOUNT: Account = { id: 'acc-1', displayName: 'Mia Beispiel', schoolClass: 'Q2' };
 
 describe('SubmissionForm', () => {
   let fixture: ComponentFixture<SubmissionForm>;
@@ -18,8 +22,6 @@ describe('SubmissionForm', () => {
 
   const fillValid = () =>
     formOf(fixture.componentInstance).patchValue({
-      uploaderName: 'Mia Beispiel',
-      uploaderClass: 'Q2',
       category: 'Kursfahrt',
       takenAt: '2025-06',
       description: 'Busfahrt nach Rom',
@@ -36,6 +38,7 @@ describe('SubmissionForm', () => {
     }).compileComponents();
 
     fixture = TestBed.createComponent(SubmissionForm);
+    fixture.componentRef.setInput('account', ACCOUNT);
     fixture.componentRef.setInput('completedCount', 2);
     fixture.componentRef.setInput('pendingCount', 0);
     fixture.componentInstance.submitted.subscribe((value) => emitted.push(value));
@@ -66,9 +69,9 @@ describe('SubmissionForm', () => {
     expect(emitted.length).toBe(0);
   });
 
-  it('requires a name and an occasion', () => {
+  it('requires an occasion and a date', () => {
     fillValid();
-    formOf(fixture.componentInstance).patchValue({ uploaderName: '', category: '' });
+    formOf(fixture.componentInstance).patchValue({ category: '', takenAt: '' });
 
     submit();
     expect(emitted.length).toBe(0);
@@ -79,10 +82,19 @@ describe('SubmissionForm', () => {
     submit();
 
     expect(emitted.length).toBe(1);
-    expect(emitted[0].uploaderName).toBe('Mia Beispiel');
     expect(emitted[0].category).toBe('Kursfahrt');
     expect(emitted[0].consentPersons).toBe(true);
     expect(emitted[0].extendedUsage).toBe(false);
+  });
+
+  it('shows the signed-in account instead of asking for a name', async () => {
+    await fixture.whenStable();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    expect(text).toContain('Mia Beispiel');
+    expect(text).toContain('Q2');
+    // The name must NOT be a form field any more.
+    expect(fixture.nativeElement.querySelector('#uploaderName')).toBeNull();
   });
 
   it('defaults extended usage to no', () => {

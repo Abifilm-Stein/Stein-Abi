@@ -1,25 +1,27 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { AccessService } from '../../core/access/access.service';
+import { Router, RouterLink } from '@angular/router';
+import { SessionService } from '../../core/account/session.service';
+import { SubmissionMetadata } from '../../core/models';
 import { SubmissionGateway } from '../../core/submissions/submission-gateway';
 import { formatBytes } from '../../core/upload/file-validation';
 import { UploadQueue } from '../../core/upload/upload-queue';
-import { AccessGate } from './access-gate';
 import { DropZone } from './drop-zone';
-import { SubmissionForm, SubmissionMetadata } from './submission-form';
+import { SubmissionForm } from './submission-form';
 import { UploadRow } from './upload-row';
 
 @Component({
   selector: 'app-upload-page',
-  imports: [AccessGate, DropZone, UploadRow, SubmissionForm],
+  imports: [DropZone, UploadRow, SubmissionForm, RouterLink],
   template: `
-    @if (!access.isUnlocked()) {
-      <app-access-gate />
-    } @else {
+    @if (session.account(); as account) {
       <h1 class="mb-2 text-3xl font-bold sm:text-4xl">Material hochladen</h1>
       <p class="mb-8 max-w-2xl text-muted">
         Originaldateien bitte, nicht per WhatsApp geschickte Versionen — die sind
-        komprimiert und im Film unbrauchbar.
+        komprimiert und im Film unbrauchbar. Was du schon abgeschickt hast, findest du
+        unter
+        <a routerLink="/meine-beitraege" class="font-semibold text-primary-ink underline"
+          >Meine Beiträge</a
+        >.
       </p>
 
       @if (queue.restoredCount() > 0) {
@@ -126,6 +128,7 @@ import { UploadRow } from './upload-row';
 
         <section class="mt-8">
           <app-submission-form
+            [account]="account"
             [completedCount]="queue.completed().length"
             [pendingCount]="queue.pending().length"
             [saving]="saving()"
@@ -145,7 +148,7 @@ import { UploadRow } from './upload-row';
   `,
 })
 export class UploadPage implements OnInit {
-  protected readonly access = inject(AccessService);
+  protected readonly session = inject(SessionService);
   protected readonly queue = inject(UploadQueue);
   private readonly gateway = inject(SubmissionGateway);
   private readonly router = inject(Router);
@@ -191,10 +194,6 @@ export class UploadPage implements OnInit {
   });
 
   ngOnInit(): void {
-    // Unlock straight from an invite link so the path is one tap long.
-    const code = new URLSearchParams(location.search).get('code');
-    if (code && !this.access.isUnlocked()) void this.access.unlock(code);
-
     void this.queue.restore();
   }
 
@@ -214,12 +213,23 @@ export class UploadPage implements OnInit {
   }
 
   protected async onSubmitted(metadata: SubmissionMetadata): Promise<void> {
+    const account = this.session.account();
+    if (!account) return;
+
     this.saving.set(true);
     this.saveError.set(null);
 
     try {
       const assets = this.queue.completedAssets();
-      await this.gateway.create({ ...metadata, assets });
+      await this.gateway.create({
+        ...metadata,
+        assets,
+        accountId: account.id,
+        // Denormalised so the team can still attribute a submission even if
+        // the account is removed later.
+        uploaderName: account.displayName,
+        uploaderClass: account.schoolClass,
+      });
       this.queue.reset();
       await this.router.navigate(['/upload/danke'], {
         state: { fileCount: assets.length },

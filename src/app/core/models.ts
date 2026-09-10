@@ -1,4 +1,4 @@
-import { Category, SchoolClass } from './config';
+import { Category } from './config';
 
 export type ReviewStatus = 'neu' | 'gesichtet' | 'verwendet' | 'aussortiert';
 
@@ -9,6 +9,14 @@ export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
   aussortiert: 'Aussortiert',
 };
 
+/** What the team is allowed to say publicly about a status, to the uploader. */
+export const REVIEW_STATUS_HINTS: Record<ReviewStatus, string> = {
+  neu: 'Noch nicht angesehen',
+  gesichtet: 'Vom Team angesehen',
+  verwendet: 'Im Film verwendet',
+  aussortiert: 'Passt nicht in den Film',
+};
+
 export interface AssetRef {
   storagePath: string;
   originalFilename: string;
@@ -16,10 +24,8 @@ export interface AssetRef {
   sizeBytes: number;
 }
 
-/** What the upload form collects. */
-export interface SubmissionDraft {
-  uploaderName: string;
-  uploaderClass: SchoolClass;
+/** The fields the upload form actually collects. */
+export interface SubmissionMetadata {
   category: Category;
   /** Month precision is enough: `YYYY-MM`. */
   takenAt: string;
@@ -27,6 +33,18 @@ export interface SubmissionDraft {
   consentPersons: boolean;
   consentPrivacy: boolean;
   extendedUsage: boolean;
+}
+
+export interface SubmissionDraft extends SubmissionMetadata {
+  /** Owning account. Everything about "my uploads" hangs off this. */
+  accountId: string;
+  /**
+   * Copied from the account at submission time rather than joined on read:
+   * the team must still be able to tell who sent something even if the
+   * account is later removed.
+   */
+  uploaderName: string;
+  uploaderClass: string;
   assets: AssetRef[];
 }
 

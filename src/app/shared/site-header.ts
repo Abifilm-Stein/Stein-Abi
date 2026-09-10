@@ -1,14 +1,15 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { ABI_YEAR } from '../core/config';
+import { UserMenu } from './user-menu';
 
 @Component({
   selector: 'app-site-header',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, UserMenu],
   template: `
     <header class="border-b border-line bg-card">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        <a routerLink="/" class="flex items-center gap-2.5 font-bold tracking-tight">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+        <a routerLink="/" class="flex shrink-0 items-center gap-2.5 font-bold tracking-tight">
           <span
             class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-card"
             aria-hidden="true"
@@ -24,20 +25,17 @@ import { ABI_YEAR } from '../core/config';
           </span>
         </a>
 
-        <nav aria-label="Hauptnavigation" class="flex items-center gap-1 text-sm font-semibold">
-          <a
-            routerLink="/upload"
-            routerLinkActive="bg-primary-soft text-primary-ink"
-            class="rounded-lg px-3 py-2 hover:bg-primary-soft"
-            >Hochladen</a
-          >
-          <a
-            routerLink="/team"
-            routerLinkActive="bg-primary-soft text-primary-ink"
-            class="rounded-lg px-3 py-2 text-muted hover:bg-primary-soft hover:text-ink"
-            >Team</a
-          >
-        </nav>
+        <div class="flex items-center gap-1">
+          <nav aria-label="Hauptnavigation" class="flex items-center text-sm font-semibold">
+            <a
+              routerLink="/upload"
+              routerLinkActive="bg-primary-soft text-primary-ink"
+              class="rounded-lg px-3 py-2 hover:bg-primary-soft"
+              >Hochladen</a
+            >
+          </nav>
+          <app-user-menu />
+        </div>
       </div>
     </header>
   `,

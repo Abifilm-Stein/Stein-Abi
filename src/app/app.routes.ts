@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { sessionGuard } from './core/account/session.service';
 import { teamGuard } from './core/auth/auth.service';
 import { Home } from './features/home/home';
 import { UploadPage } from './features/upload/upload-page';
@@ -11,7 +12,23 @@ const SUFFIX = ' – Abifilm FvS';
  */
 export const routes: Routes = [
   { path: '', component: Home, title: 'Fotos & Videos gesucht' + SUFFIX },
-  { path: 'upload', component: UploadPage, title: 'Hochladen' + SUFFIX },
+  {
+    path: 'upload',
+    component: UploadPage,
+    title: 'Hochladen' + SUFFIX,
+    canActivate: [sessionGuard],
+  },
+  {
+    path: 'anmelden',
+    title: 'Anmelden' + SUFFIX,
+    loadComponent: () => import('./features/auth/code-login').then((m) => m.CodeLogin),
+  },
+  {
+    path: 'meine-beitraege',
+    title: 'Meine Beiträge' + SUFFIX,
+    canActivate: [sessionGuard],
+    loadComponent: () => import('./features/mine/my-submissions').then((m) => m.MySubmissions),
+  },
   {
     path: 'upload/danke',
     title: 'Danke' + SUFFIX,

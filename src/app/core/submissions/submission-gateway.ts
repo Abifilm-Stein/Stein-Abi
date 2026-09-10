@@ -8,9 +8,25 @@ import { runtimeConfig } from '../runtime-config';
 /** Persistence boundary for submission records. */
 export abstract class SubmissionGateway {
   abstract create(draft: SubmissionDraft): Promise<Submission>;
+
+  /**
+   * The signed-in student's own submissions.
+   *
+   * The account is passed for the demo implementation's benefit only. In
+   * production the server derives the owner from the session token and the
+   * database enforces it -- a client-supplied id must never decide what a
+   * request may read.
+   */
+  abstract listMine(accountId: string): Promise<Submission[]>;
+
+  /** Withdraw one's own submission (Art. 7(3) GDPR). */
+  abstract withdraw(id: string, accountId: string): Promise<void>;
+
+  /* Team-only operations. */
   abstract list(): Promise<Submission[]>;
   abstract setReviewStatus(id: string, status: ReviewStatus): Promise<void>;
   abstract remove(id: string): Promise<void>;
+
   /** Public counter for the landing page. */
   abstract count(): Promise<number>;
 }
@@ -27,6 +43,15 @@ export class HttpSubmissionGateway implements SubmissionGateway {
         consentVersion: CONSENT_VERSION,
       }),
     );
+  }
+
+  listMine(): Promise<Submission[]> {
+    // No account id in the URL on purpose: the session token decides.
+    return firstValueFrom(this.http.get<Submission[]>(`${this.base}/submissions/mine`));
+  }
+
+  async withdraw(id: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`${this.base}/submissions/mine/${id}`));
   }
 
   list(): Promise<Submission[]> {
@@ -56,9 +81,9 @@ const STORAGE_KEY = 'steinabi-demo-submissions';
 /**
  * Demo-mode persistence in `localStorage`.
  *
- * Present so the whole flow is clickable without a backend. It is NOT a
- * production store: the data is per-browser, unencrypted and readable by
- * anyone at that device.
+ * Present so the whole flow is clickable without a backend. NOT a production
+ * store: per-browser, unencrypted, and the per-account filtering below is a
+ * convenience rather than access control.
  */
 @Injectable()
 export class LocalSubmissionGateway implements SubmissionGateway {
@@ -72,6 +97,16 @@ export class LocalSubmissionGateway implements SubmissionGateway {
     };
     this.write([...this.read(), submission]);
     return submission;
+  }
+
+  async listMine(accountId: string): Promise<Submission[]> {
+    return (await this.list()).filter((entry) => entry.accountId === accountId);
+  }
+
+  async withdraw(id: string, accountId: string): Promise<void> {
+    this.write(
+      this.read().filter((entry) => !(entry.id === id && entry.accountId === accountId)),
+    );
   }
 
   async list(): Promise<Submission[]> {

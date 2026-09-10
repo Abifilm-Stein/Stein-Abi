@@ -24,12 +24,14 @@ gesetzt sind, läuft die App **vollständig ohne Backend**:
 |---|---|
 | Upload | simuliert (`MockUploadTarget`), kein Byte verlässt das Gerät |
 | Beiträge | `localStorage` |
-| Zugangscode | `ABIFILM26`, im Browser geprüft |
+| Anmeldung | `DEMA-Q2MJ-A234`, `DEMB-Q2JN-S567`, `DEMC-Q2EN-A789` — im Browser geprüft |
 | Team-Login | `team@example.de` / `abifilm`, im Browser geprüft |
 
-Ein gelbes Banner weist durchgehend darauf hin. **Zugangscode und Team-Login
-schützen in diesem Modus nichts** — das ist Absicht, damit ein Demo-Build nicht
-versehentlich für produktionsreif gehalten wird.
+Die Codes sind auf der Anmeldeseite anklickbar hinterlegt.
+
+Ein gelbes Banner weist durchgehend darauf hin. **Anmeldung und Team-Login schützen
+in diesem Modus nichts** — das ist Absicht, damit ein Demo-Build nicht versehentlich
+für produktionsreif gehalten wird.
 
 Retry-Verhalten von Hand testen: `window.__steinabiFailureRate = 0.3` in der Konsole.
 
@@ -41,7 +43,9 @@ src/app/
     config.ts                  Limits, Kategorien, Fristen, Kontakt — einzige Quelle
     runtime-config.ts          Deploy-Konfiguration aus index.html, Demo-Modus-Flag
     models.ts                  Submission, AssetRef, ReviewStatus
-    access/                    Zugangscode-Gate
+    account/
+      account.ts               Kontomodell, Code-Format, Code-Generator
+      session.service.ts       Anmeldung per Code, Session, sessionGuard
     auth/                      Team-Authentifizierung + Route-Guard
     submissions/               SubmissionGateway (HTTP | localStorage)
     upload/
@@ -52,9 +56,45 @@ src/app/
       queue-store.ts           IndexedDB-Persistenz der Warteschlange
       file-validation.ts       Größen- und Typprüfung, HEIC-Erkennung
   features/
-    home/ upload/ legal/ team/ not-found/
-supabase/migrations/0001_init.sql   Schema inkl. Row Level Security
+    home/ auth/ upload/ mine/ legal/ team/ not-found/
+supabase/migrations/
+  0001_init.sql                Schema inkl. Row Level Security
+  0002_accounts.sql            Vorgenerierte Konten, Zugriff auf eigene Beiträge
 ```
+
+## Anmeldung und „Meine Beiträge“
+
+Konten werden **vorab generiert**, jede Person bekommt einen persönlichen Code.
+Diesen Code eingeben *ist* die Anmeldung — keine E-Mail, kein Passwort, keine
+Registrierung. Das hält die Reibung niedrig und speichert keine
+E-Mail-Adressen von Minderjährigen.
+
+Weil der Code damit ein **persönliches Zugangsmittel** ist, gilt:
+
+- 12 Zeichen aus einem 30er-Alphabet (30¹² ≈ 5,3·10¹⁷), erzeugt mit
+  `crypto.getRandomValues` und Rejection Sampling — nie `Math.random`
+- ohne `I`, `O`, `L`, `U`, `0`, `1`: jeder Lesefehler vom Zettel ist eine Person,
+  die die Seite für kaputt hält
+- gespeichert wird nur ein **bcrypt-Hash**, nie der Code selbst
+- **Rate Limiting ist Pflicht** — ohne es nützt die Entropie nichts, weil einfach
+  durchprobiert werden kann
+- Eingaben werden **nicht** stillschweigend korrigiert: ein `O` bleibt sichtbar
+  falsch, statt zu einem anderen Code umgeschrieben zu werden
+
+Die Sitzung liegt standardmäßig im `sessionStorage` und endet mit dem Tab.
+„Angemeldet bleiben“ wechselt bewusst explizit auf `localStorage` — an einem
+Schulrechner würde ein dauerhafter Login sonst der nächsten Person die eigenen
+Beiträge zeigen.
+
+Konten anlegen (aus einem vertrauenswürdigen Kontext, Service Role):
+
+```sql
+select provision_account('Mia Beispiel', 'Q2', 'DEMA-Q2MJ-A234');
+```
+
+Dass jemand nur die **eigenen** Beiträge sieht, erzwingt die Datenbank über
+`current_account_id()` aus einem JWT-Claim — nicht die Website. Eine im
+Request mitgeschickte Konto-ID würde sonst reichen, um fremde Uploads zu lesen.
 
 ## Warum der Upload so gebaut ist
 
@@ -92,9 +132,11 @@ Erwartete API-Endpunkte:
 
 | Methode | Pfad | Zweck |
 |---|---|---|
-| `POST` | `/access` | Zugangscode gegen kurzlebiges Upload-Token tauschen |
+| `POST` | `/session` | Persönlichen Code gegen Session-Token tauschen (rate-limited!) |
 | `POST` | `/auth/sign-in` | Team-Anmeldung |
 | `POST` | `/submissions` | Beitrag anlegen (verknüpft die Assets) |
+| `GET` | `/submissions/mine` | Eigene Beiträge — Besitzer kommt aus dem Token, nie aus der URL |
+| `DELETE` | `/submissions/mine/:id` | Eigenen Beitrag zurückziehen |
 | `GET` | `/submissions` | Liste für das Team (RLS-geschützt) |
 | `PATCH` | `/submissions/:id` | Review-Status setzen |
 | `DELETE` | `/submissions/:id` | Beitrag inkl. Storage-Objekte löschen |
@@ -103,7 +145,10 @@ Erwartete API-Endpunkte:
 Serverseitig zwingend nachzuziehen:
 
 - **Magic-Bytes-Prüfung** der Dateien. Die Client-Validierung ist reines UX.
-- **Rate Limiting** pro IP (Werte in `.env.example`).
+- **Rate Limiting** pro IP (Werte in `.env.example`) — für Uploads *und* für
+  `/session`, sonst ist der Code durchprobierbar.
+- **Gleiche Antwort** für unbekannten und gesperrten Code, damit sich über die
+  Antwort nicht herausfinden lässt, welche Codes existieren.
 - **Thumbnails/Proxies** per ffmpeg als Ableitung; Originale nie neu kodieren.
 - **Löschung der Storage-Objekte** in denselben Jobs, die DB-Zeilen löschen.
 

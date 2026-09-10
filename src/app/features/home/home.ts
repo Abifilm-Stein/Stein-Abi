@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { SessionService } from '../../core/account/session.service';
 import { ABI_YEAR, SCHOOL_NAME, SUBMISSION_DEADLINE } from '../../core/config';
 import { SubmissionGateway } from '../../core/submissions/submission-gateway';
 
@@ -43,12 +44,24 @@ const WANTED = [
       </p>
 
       <div class="flex flex-wrap items-center gap-4">
-        <a routerLink="/upload" class="btn btn-primary text-lg"> Jetzt hochladen </a>
+        @if (session.isSignedIn()) {
+          <a routerLink="/upload" class="btn btn-primary text-lg">Jetzt hochladen</a>
+          <a routerLink="/meine-beitraege" class="btn btn-ghost">Meine Beiträge</a>
+        } @else {
+          <a routerLink="/anmelden" class="btn btn-primary text-lg">Mit Code anmelden</a>
+        }
         <div class="text-sm">
           <p class="font-semibold">Einsendeschluss</p>
           <p class="text-muted">{{ deadline }}</p>
         </div>
       </div>
+
+      @if (!session.isSignedIn()) {
+        <p class="mt-4 max-w-2xl text-sm text-muted">
+          Du brauchst nur den persönlichen Code, den du vom Abifilm-Team bekommen hast —
+          kein Konto anlegen, keine E-Mail-Adresse.
+        </p>
+      }
 
       @if (count() !== null) {
         <p class="mt-8 text-sm text-muted" role="status">
@@ -90,6 +103,7 @@ const WANTED = [
 })
 export class Home implements OnInit {
   private readonly gateway = inject(SubmissionGateway);
+  protected readonly session = inject(SessionService);
 
   protected readonly abiYear = ABI_YEAR;
   protected readonly schoolName = SCHOOL_NAME;

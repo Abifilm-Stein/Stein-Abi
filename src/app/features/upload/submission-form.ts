@@ -1,55 +1,30 @@
 import { Component, effect, input, output, signal } from '@angular/core';
-import {
-  FormBuilder,
-  FormsModule,
-  ReactiveFormsModule,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { CATEGORIES, SCHOOL_CLASSES } from '../../core/config';
-import { SubmissionDraft } from '../../core/models';
-
-export type SubmissionMetadata = Omit<SubmissionDraft, 'assets'>;
+import { Account } from '../../core/account/account';
+import { CATEGORIES } from '../../core/config';
+import { SubmissionMetadata } from '../../core/models';
 
 @Component({
   selector: 'app-submission-form',
-  imports: [ReactiveFormsModule, FormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink],
   template: `
     <form class="card p-5 sm:p-6" [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
       <h2 class="mb-1 text-xl font-bold">Wer und was ist zu sehen?</h2>
-      <p class="mb-6 text-sm text-muted">
+      <p class="mb-5 text-sm text-muted">
         Ohne diese Angaben landen die Dateien als namenloser Haufen beim Filmteam. Du kannst
         das Formular ausfüllen, während die Dateien noch hochladen.
       </p>
 
+      <!-- Name and class come from the signed-in account, so they are shown
+           rather than asked for. One field fewer on a phone keyboard. -->
+      <p class="mb-6 rounded-lg bg-primary-soft px-3 py-2 text-sm">
+        Wird hochgeladen als
+        <strong class="font-semibold">{{ account().displayName }}</strong>
+        <span class="text-muted">({{ account().schoolClass }})</span>
+      </p>
+
       <div class="grid gap-5 sm:grid-cols-2">
-        <div>
-          <label for="uploaderName" class="field-label">Dein Name</label>
-          <input
-            id="uploaderName"
-            class="field-input"
-            formControlName="uploaderName"
-            autocomplete="name"
-            [attr.aria-invalid]="isInvalid('uploaderName') ? 'true' : null"
-            [attr.aria-describedby]="isInvalid('uploaderName') ? 'err-uploaderName' : null"
-          />
-          @if (isInvalid('uploaderName')) {
-            <p id="err-uploaderName" class="field-error" role="alert">
-              <span aria-hidden="true">⚠</span>
-              <span>Bitte gib deinen Namen an, damit das Filmteam nachfragen kann.</span>
-            </p>
-          }
-        </div>
-
-        <div>
-          <label for="uploaderClass" class="field-label">Stufe / Rolle</label>
-          <select id="uploaderClass" class="field-input" formControlName="uploaderClass">
-            @for (option of schoolClasses; track option) {
-              <option [value]="option">{{ option }}</option>
-            }
-          </select>
-        </div>
-
         <div>
           <label for="category" class="field-label">Anlass</label>
           <select
@@ -81,11 +56,18 @@ export type SubmissionMetadata = Omit<SubmissionDraft, 'assets'>;
             formControlName="takenAt"
             [max]="currentMonth"
             [attr.aria-invalid]="isInvalid('takenAt') ? 'true' : null"
-            [attr.aria-describedby]="'hint-takenAt'"
+            aria-describedby="hint-takenAt"
           />
-          <p id="hint-takenAt" class="mt-1.5 text-xs text-muted">
-            Monat und Jahr genügen. Vorbelegt aus dem Dateidatum.
-          </p>
+          @if (isInvalid('takenAt')) {
+            <p class="field-error" role="alert">
+              <span aria-hidden="true">⚠</span>
+              <span>Bitte gib an, wann die Aufnahme entstanden ist.</span>
+            </p>
+          } @else {
+            <p id="hint-takenAt" class="mt-1.5 text-xs text-muted">
+              Monat und Jahr genügen. Vorbelegt aus dem Dateidatum.
+            </p>
+          }
         </div>
 
         <div class="sm:col-span-2">
@@ -181,6 +163,7 @@ export type SubmissionMetadata = Omit<SubmissionDraft, 'assets'>;
   `,
 })
 export class SubmissionForm {
+  readonly account = input.required<Account>();
   /** Files that finished transferring. Submitting with zero is pointless. */
   readonly completedCount = input.required<number>();
   /** Transfers still running -- the record must reference finished assets. */
@@ -192,16 +175,12 @@ export class SubmissionForm {
   readonly submitted = output<SubmissionMetadata>();
 
   protected readonly categories = CATEGORIES;
-  protected readonly schoolClasses = SCHOOL_CLASSES;
   protected readonly currentMonth = new Date().toISOString().slice(0, 7);
 
   private readonly attempted = signal(false);
-
   private readonly fb = new FormBuilder().nonNullable;
 
   protected readonly form = this.fb.group({
-    uploaderName: ['', [Validators.required, Validators.minLength(2)]],
-    uploaderClass: [SCHOOL_CLASSES[0] as string, Validators.required],
     category: ['', Validators.required],
     takenAt: ['', Validators.required],
     description: [''],
@@ -235,7 +214,7 @@ export class SubmissionForm {
     return null;
   }
 
-  protected isInvalid(name: 'uploaderName' | 'category' | 'takenAt'): boolean {
+  protected isInvalid(name: 'category' | 'takenAt'): boolean {
     const control = this.form.controls[name];
     return control.invalid && (control.touched || this.attempted());
   }

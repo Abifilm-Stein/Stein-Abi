@@ -30,15 +30,16 @@ import { CONTACT } from '../../core/config';
 
       <div class="flex flex-col justify-center gap-3 sm:flex-row">
         <a routerLink="/upload" class="btn btn-primary">Weitere Dateien hochladen</a>
-        <a routerLink="/" class="btn btn-ghost">Zur Startseite</a>
+        <a routerLink="/meine-beitraege" class="btn btn-ghost">Meine Beiträge ansehen</a>
       </div>
 
       <p class="mt-10 text-sm text-muted">
-        Du möchtest einen Beitrag zurückziehen? Schreib an
+        Du möchtest einen Beitrag zurückziehen? Das kannst du unter „Meine Beiträge“ selbst
+        erledigen. Bei Fragen erreichst du uns unter
         <a [href]="'mailto:' + contact.email" class="font-semibold text-primary-ink underline">{{
           contact.email
         }}</a
-        >, wir löschen ihn dann.
+        >.
       </p>
     </div>
   `,
