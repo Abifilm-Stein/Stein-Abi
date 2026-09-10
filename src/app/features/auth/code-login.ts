@@ -14,7 +14,11 @@ import { isDemoMode } from '../../core/runtime-config';
         du nicht anlegen — der Code ist deine Anmeldung.
       </p>
 
-      <form (ngSubmit)="submit()" novalidate>
+      <!-- Native (submit), not (ngSubmit): this component holds its state in
+           signals and imports no forms module, and (ngSubmit) without NgForm
+           silently never fires -- the browser then does a real form
+           submission and the page just reloads. -->
+      <form (submit)="submit($event)" novalidate>
         <label for="code" class="field-label">Dein Code</label>
         <input
           id="code"
@@ -133,7 +137,9 @@ export class CodeLogin {
     void this.submit();
   }
 
-  protected async submit(): Promise<void> {
+  protected async submit(event?: Event): Promise<void> {
+    // Without this the browser performs a real form submission and reloads.
+    event?.preventDefault();
     this.error.set(null);
 
     if (!isValidCode(this.raw())) {

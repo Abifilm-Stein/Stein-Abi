@@ -122,13 +122,6 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                   <p class="mt-2 text-sm">{{ submission.description }}</p>
                 }
                 <p class="mt-2 flex flex-wrap gap-2 text-xs text-muted">
-                  @if (submission.extendedUsage) {
-                    <span class="rounded bg-primary-soft px-2 py-0.5 font-semibold text-primary-ink">
-                      Nutzung über den Film hinaus erlaubt
-                    </span>
-                  } @else {
-                    <span class="rounded bg-surface px-2 py-0.5">Nur Abifilm</span>
-                  }
                   <span class="rounded bg-surface px-2 py-0.5">
                     Einwilligung {{ submission.consentVersion }}
                   </span>

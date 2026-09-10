@@ -27,7 +27,6 @@ describe('SubmissionForm', () => {
       description: 'Busfahrt nach Rom',
       consentPersons: true,
       consentPrivacy: true,
-      extendedUsage: false,
     });
 
   beforeEach(async () => {
@@ -84,7 +83,6 @@ describe('SubmissionForm', () => {
     expect(emitted.length).toBe(1);
     expect(emitted[0].category).toBe('Kursfahrt');
     expect(emitted[0].consentPersons).toBe(true);
-    expect(emitted[0].extendedUsage).toBe(false);
   });
 
   it('shows the signed-in account instead of asking for a name', async () => {
@@ -97,8 +95,14 @@ describe('SubmissionForm', () => {
     expect(fixture.nativeElement.querySelector('#uploaderName')).toBeNull();
   });
 
-  it('defaults extended usage to no', () => {
-    expect(formOf(fixture.componentInstance).getRawValue().extendedUsage).toBe(false);
+  it('does not offer any usage beyond the film', () => {
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+
+    // The material is collected for the Abifilm only. There must be no field
+    // that could later be read as permission for anything else.
+    expect(fixture.nativeElement.querySelector('input[type="radio"]')).toBeNull();
+    expect(text).not.toContain('auch darüber hinaus');
+    expect(formOf(fixture.componentInstance).contains('extendedUsage')).toBe(false);
   });
 
   it('cannot be submitted while transfers are still running', async () => {

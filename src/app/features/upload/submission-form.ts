@@ -123,32 +123,10 @@ import { SubmissionMetadata } from '../../core/models';
         }
       </fieldset>
 
-      <fieldset class="mt-6">
-        <legend class="mb-1 font-bold">Nutzung außerhalb des Abifilms</legend>
-        <p class="mb-3 text-sm text-muted">
-          Darf das Material auch für Abizeitung oder Social Media verwendet werden?
-        </p>
-        <div class="flex gap-5 text-sm">
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              class="size-4 accent-[var(--primary)]"
-              formControlName="extendedUsage"
-              [value]="false"
-            />
-            <span>Nein, nur Abifilm</span>
-          </label>
-          <label class="flex cursor-pointer items-center gap-2">
-            <input
-              type="radio"
-              class="size-4 accent-[var(--primary)]"
-              formControlName="extendedUsage"
-              [value]="true"
-            />
-            <span>Ja, auch darüber hinaus</span>
-          </label>
-        </div>
-      </fieldset>
+      <p class="mt-5 text-xs text-muted">
+        Dein Material wird ausschließlich für den Abifilm verwendet — nicht für
+        Abizeitung, Social Media oder andere Zwecke.
+      </p>
 
       <div class="mt-8">
         <button type="submit" class="btn btn-primary w-full sm:w-auto" [disabled]="!canSubmit()">
@@ -186,7 +164,6 @@ export class SubmissionForm {
     description: [''],
     consentPersons: [false, Validators.requiredTrue],
     consentPrivacy: [false, Validators.requiredTrue],
-    extendedUsage: [false],
   });
 
   constructor() {

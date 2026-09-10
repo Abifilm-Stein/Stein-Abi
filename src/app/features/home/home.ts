@@ -39,7 +39,7 @@ const WANTED = [
       </h1>
 
       <p class="mb-8 max-w-2xl text-lg text-muted">
-        Acht Jahre {{ schoolName }} in einem Film — und dafür brauchen wir dein
+        Neun Jahre {{ schoolName }} in einem Film — und dafür brauchen wir dein
         Material. Hochladen dauert keine zwei Minuten, ein Konto brauchst du nicht.
       </p>
 

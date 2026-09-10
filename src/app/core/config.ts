@@ -14,7 +14,7 @@ export const SUBMISSION_DEADLINE = new Date('2026-03-31T23:59:59+01:00');
  * wording in `/datenschutz` changes -- it is stored per submission so an
  * existing consent can always be traced back to what was actually agreed to.
  */
-export const CONSENT_VERSION = '2026-09-01';
+export const CONSENT_VERSION = '2026-09-10';
 
 /** Months after the graduation ceremony when all material is deleted. */
 export const RETENTION_MONTHS = 6;

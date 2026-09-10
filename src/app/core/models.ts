@@ -24,7 +24,14 @@ export interface AssetRef {
   sizeBytes: number;
 }
 
-/** The fields the upload form actually collects. */
+/**
+ * The fields the upload form actually collects.
+ *
+ * There is deliberately no "may this be used beyond the film" flag: the
+ * material is collected for the Abifilm only. Not asking is stronger than
+ * asking and defaulting to no -- there is no field anyone could later
+ * reinterpret as permission for the Abizeitung or social media.
+ */
 export interface SubmissionMetadata {
   category: Category;
   /** Month precision is enough: `YYYY-MM`. */
@@ -32,7 +39,6 @@ export interface SubmissionMetadata {
   description: string;
   consentPersons: boolean;
   consentPrivacy: boolean;
-  extendedUsage: boolean;
 }
 
 export interface SubmissionDraft extends SubmissionMetadata {

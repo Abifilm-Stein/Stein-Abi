@@ -114,8 +114,10 @@ Dateien davon abweichend zu bearbeiten:
 - **Checkbox (Pflicht):** „Alle erkennbaren Personen sind mit der Verwendung im Abifilm
   einverstanden.“
 - **Checkbox (Pflicht):** Einwilligung Datenschutz mit Link auf `/datenschutz`
-- **Radio:** Darf das Material auch außerhalb des Abifilms genutzt werden (Abizeitung,
-  Social Media)? Ja / Nein — Standard **Nein**.
+- ~~**Radio:** Darf das Material auch außerhalb des Abifilms genutzt werden (Abizeitung,
+  Social Media)?~~ — **verworfen.** Das Material wird ausschließlich für den Abifilm
+  verwendet. Nicht zu fragen ist stärker, als zu fragen und auf „Nein“ vorzubelegen:
+  es existiert dann kein Feld, das später als Erlaubnis gelesen werden könnte.
 
 Formular mit Angular Reactive Forms, Fehlermeldungen inline, deutsch und konkret
 („Bitte gib deinen Namen an“, nicht „Feld ungültig“).
