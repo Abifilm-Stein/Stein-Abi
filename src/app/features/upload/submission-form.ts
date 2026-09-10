@@ -1,8 +1,8 @@
-import { Component, effect, input, output, signal } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Account } from '../../core/account/account';
-import { CATEGORIES } from '../../core/config';
+import { CATEGORIES, GRADES, gradeLabel } from '../../core/config';
 import { SubmissionMetadata } from '../../core/models';
 
 @Component({
@@ -48,24 +48,27 @@ import { SubmissionMetadata } from '../../core/models';
         </div>
 
         <div>
-          <label for="takenAt" class="field-label">Wann war das?</label>
-          <input
-            id="takenAt"
-            type="month"
+          <label for="grade" class="field-label">In welcher Stufe war das?</label>
+          <select
+            id="grade"
             class="field-input"
-            formControlName="takenAt"
-            [max]="currentMonth"
-            [attr.aria-invalid]="isInvalid('takenAt') ? 'true' : null"
-            aria-describedby="hint-takenAt"
-          />
-          @if (isInvalid('takenAt')) {
-            <p class="field-error" role="alert">
+            formControlName="grade"
+            [attr.aria-invalid]="isInvalid('grade') ? 'true' : null"
+            [attr.aria-describedby]="isInvalid('grade') ? 'err-grade' : 'hint-grade'"
+          >
+            <option value="">Bitte auswählen…</option>
+            @for (option of grades; track option) {
+              <option [value]="option">{{ label(option) }}</option>
+            }
+          </select>
+          @if (isInvalid('grade')) {
+            <p id="err-grade" class="field-error" role="alert">
               <span aria-hidden="true">⚠</span>
-              <span>Bitte gib an, wann die Aufnahme entstanden ist.</span>
+              <span>Bitte wähle die Stufe aus, in der die Aufnahme entstanden ist.</span>
             </p>
           } @else {
-            <p id="hint-takenAt" class="mt-1.5 text-xs text-muted">
-              Monat und Jahr genügen. Vorbelegt aus dem Dateidatum.
+            <p id="hint-grade" class="mt-1.5 text-xs text-muted">
+              Ungefähr genügt. Wenn du unsicher bist, nimm die wahrscheinlichere.
             </p>
           }
         </div>
@@ -147,35 +150,23 @@ export class SubmissionForm {
   /** Transfers still running -- the record must reference finished assets. */
   readonly pendingCount = input.required<number>();
   readonly saving = input(false);
-  /** `YYYY-MM` guess from the picked files, used to prefill the date. */
-  readonly suggestedMonth = input<string | undefined>(undefined);
 
   readonly submitted = output<SubmissionMetadata>();
 
   protected readonly categories = CATEGORIES;
-  protected readonly currentMonth = new Date().toISOString().slice(0, 7);
+  protected readonly grades = GRADES;
+  protected readonly label = gradeLabel;
 
   private readonly attempted = signal(false);
   private readonly fb = new FormBuilder().nonNullable;
 
   protected readonly form = this.fb.group({
     category: ['', Validators.required],
-    takenAt: ['', Validators.required],
+    grade: ['', Validators.required],
     description: [''],
     consentPersons: [false, Validators.requiredTrue],
     consentPrivacy: [false, Validators.requiredTrue],
   });
-
-  constructor() {
-    effect(() => {
-      const suggestion = this.suggestedMonth();
-      const control = this.form.controls.takenAt;
-      // Only fill an untouched empty field -- never overwrite a manual entry.
-      if (suggestion && control.pristine && control.value === '') {
-        control.setValue(suggestion);
-      }
-    });
-  }
 
   protected canSubmit(): boolean {
     return this.completedCount() > 0 && this.pendingCount() === 0 && !this.saving();
@@ -191,7 +182,7 @@ export class SubmissionForm {
     return null;
   }
 
-  protected isInvalid(name: 'category' | 'takenAt'): boolean {
+  protected isInvalid(name: 'category' | 'grade'): boolean {
     const control = this.form.controls[name];
     return control.invalid && (control.touched || this.attempted());
   }

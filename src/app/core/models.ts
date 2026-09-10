@@ -1,4 +1,4 @@
-import { Category } from './config';
+import { Category, Grade } from './config';
 
 export type ReviewStatus = 'neu' | 'gesichtet' | 'verwendet' | 'aussortiert';
 
@@ -34,8 +34,8 @@ export interface AssetRef {
  */
 export interface SubmissionMetadata {
   category: Category;
-  /** Month precision is enough: `YYYY-MM`. */
-  takenAt: string;
+  /** School year the material is from -- see GRADES in `config.ts`. */
+  grade: Grade;
   description: string;
   consentPersons: boolean;
   consentPrivacy: boolean;

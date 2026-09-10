@@ -71,3 +71,23 @@ export type Category = (typeof CATEGORIES)[number];
 export const SCHOOL_CLASSES = ['Q2', 'Q1', 'EF', 'Lehrkraft', 'Sonstige'] as const;
 
 export type SchoolClass = (typeof SCHOOL_CLASSES)[number];
+
+/**
+ * When an upload was taken, expressed as the school year the material is
+ * from rather than a calendar date.
+ *
+ * "In welcher Stufe war das?" is a question people can actually answer about
+ * a photo from years ago -- "Juni 2021" is not. It also sorts the way the
+ * film team thinks about the material.
+ *
+ * Order matters: it drives the dropdown and the sort order, so keep it
+ * chronological. G9, so 5 to 10 followed by the three upper years.
+ */
+export const GRADES = ['5', '6', '7', '8', '9', '10', 'EF', 'Q1', 'Q2'] as const;
+
+export type Grade = (typeof GRADES)[number];
+
+/** Numeric grades read better with a prefix; EF/Q1/Q2 stand on their own. */
+export function gradeLabel(grade: string): string {
+  return /^\d+$/.test(grade) ? `Stufe ${grade}` : grade;
+}

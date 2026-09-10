@@ -23,7 +23,7 @@ describe('SubmissionForm', () => {
   const fillValid = () =>
     formOf(fixture.componentInstance).patchValue({
       category: 'Kursfahrt',
-      takenAt: '2025-06',
+      grade: 'Q1',
       description: 'Busfahrt nach Rom',
       consentPersons: true,
       consentPrivacy: true,
@@ -68,9 +68,17 @@ describe('SubmissionForm', () => {
     expect(emitted.length).toBe(0);
   });
 
-  it('requires an occasion and a date', () => {
+  it('requires an occasion and a grade', () => {
     fillValid();
-    formOf(fixture.componentInstance).patchValue({ category: '', takenAt: '' });
+    formOf(fixture.componentInstance).patchValue({ category: '', grade: '' });
+
+    submit();
+    expect(emitted.length).toBe(0);
+  });
+
+  it('requires the grade on its own', () => {
+    fillValid();
+    formOf(fixture.componentInstance).patchValue({ grade: '' });
 
     submit();
     expect(emitted.length).toBe(0);
@@ -82,7 +90,34 @@ describe('SubmissionForm', () => {
 
     expect(emitted.length).toBe(1);
     expect(emitted[0].category).toBe('Kursfahrt');
+    expect(emitted[0].grade).toBe('Q1');
     expect(emitted[0].consentPersons).toBe(true);
+  });
+
+  it('offers the school years from 5 to Q2 instead of a date field', () => {
+    const options = Array.from(
+      (fixture.nativeElement as HTMLElement).querySelectorAll<HTMLOptionElement>(
+        '#grade option',
+      ),
+    )
+      .map((option) => option.value)
+      .filter(Boolean);
+
+    expect(options).toEqual(['5', '6', '7', '8', '9', '10', 'EF', 'Q1', 'Q2']);
+    // The month picker is gone.
+    expect(fixture.nativeElement.querySelector('input[type="month"]')).toBeNull();
+  });
+
+  it('labels numeric years with a prefix and leaves the upper years alone', () => {
+    const labelOf = (value: string) =>
+      (
+        (fixture.nativeElement as HTMLElement).querySelector(
+          `#grade option[value="${value}"]`,
+        ) as HTMLOptionElement
+      ).textContent?.trim();
+
+    expect(labelOf('7')).toBe('Stufe 7');
+    expect(labelOf('Q2')).toBe('Q2');
   });
 
   it('shows the signed-in account instead of asking for a name', async () => {

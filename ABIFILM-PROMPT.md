@@ -109,7 +109,9 @@ Dateien davon abweichend zu bearbeiten:
 - **Name der hochladenden Person** (Pflicht, Freitext) + Klasse/Kurs ⟨z. B. Q2⟩
 - **Anlass/Kategorie** (Pflicht, Auswahlliste): Kursfahrt, Sportfest, Unterricht, Pausenhof,
   Klassenfahrt Stufe 5–10, Abistreich, Motto-Woche, Karneval, Sonstiges
-- **Ungefährer Zeitpunkt** (Monat/Jahr genügt, Vorbelegung aus EXIF sofern lesbar)
+- **Stufe** (Auswahl 5 bis Q2) — ersetzt die ursprünglich geplante Monats-/Jahresangabe.
+  „In welcher Stufe war das?“ lässt sich für ein Foto von vor vier Jahren beantworten,
+  „Juni 2021“ nicht. Damit entfällt auch die EXIF-Vorbelegung.
 - **Kurzbeschreibung** (Freitext, optional): „Wer/was ist zu sehen?“
 - **Checkbox (Pflicht):** „Alle erkennbaren Personen sind mit der Verwendung im Abifilm
   einverstanden.“

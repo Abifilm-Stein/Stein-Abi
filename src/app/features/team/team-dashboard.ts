@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
-import { CATEGORIES } from '../../core/config';
+import { CATEGORIES, gradeLabel } from '../../core/config';
 import { ReviewStatus, REVIEW_STATUS_LABELS, Submission } from '../../core/models';
 import { isDemoMode } from '../../core/runtime-config';
 import { SubmissionGateway } from '../../core/submissions/submission-gateway';
@@ -113,7 +113,7 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                   <span class="font-normal text-muted">· {{ submission.uploaderClass }}</span>
                 </p>
                 <p class="mt-0.5 text-sm text-muted">
-                  {{ submission.category }} · {{ submission.takenAt }} ·
+                  {{ submission.category }} · {{ gradeLabel(submission.grade) }} ·
                   {{ submission.assets.length }}
                   {{ submission.assets.length === 1 ? 'Datei' : 'Dateien' }} ·
                   {{ sizeOf(submission) }}
@@ -172,6 +172,7 @@ export class TeamDashboard implements OnInit {
   private readonly router = inject(Router);
 
   protected readonly categories = CATEGORIES;
+  protected readonly gradeLabel = gradeLabel;
   protected readonly statuses = STATUSES;
   protected readonly statusLabels = REVIEW_STATUS_LABELS;
   protected readonly isDemoMode = isDemoMode;

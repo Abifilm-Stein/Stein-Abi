@@ -1,7 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SessionService } from '../../core/account/session.service';
-import { CONTACT } from '../../core/config';
+import { CONTACT, gradeLabel } from '../../core/config';
 import { REVIEW_STATUS_HINTS, Submission } from '../../core/models';
 import { SubmissionGateway } from '../../core/submissions/submission-gateway';
 import { formatBytes } from '../../core/upload/file-validation';
@@ -57,7 +57,7 @@ import { formatBytes } from '../../core/upload/file-validation';
               <div class="min-w-0">
                 <p class="font-bold">{{ submission.category }}</p>
                 <p class="mt-0.5 text-sm text-muted">
-                  {{ formatMonth(submission.takenAt) }} ·
+                  {{ gradeLabel(submission.grade) }} ·
                   {{ submission.assets.length }}
                   {{ submission.assets.length === 1 ? 'Datei' : 'Dateien' }} ·
                   {{ sizeOf(submission) }}
@@ -128,6 +128,7 @@ export class MySubmissions implements OnInit {
 
   protected readonly statusHints = REVIEW_STATUS_HINTS;
   protected readonly contact = CONTACT;
+  protected readonly gradeLabel = gradeLabel;
 
   protected readonly submissions = signal<Submission[]>([]);
   protected readonly loading = signal(true);
@@ -193,14 +194,6 @@ export class MySubmissions implements OnInit {
 
   protected bytes(value: number): string {
     return formatBytes(value);
-  }
-
-  protected formatMonth(value: string): string {
-    // `YYYY-MM` -- Date parsing needs a day component to be reliable.
-    const parsed = new Date(`${value}-01T00:00:00`);
-    return Number.isNaN(parsed.getTime())
-      ? value
-      : new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(parsed);
   }
 
   protected formatDate(value: string): string {

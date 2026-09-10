@@ -132,7 +132,6 @@ import { UploadRow } from './upload-row';
             [completedCount]="queue.completed().length"
             [pendingCount]="queue.pending().length"
             [saving]="saving()"
-            [suggestedMonth]="suggestedMonth()"
             (submitted)="onSubmitted($event)"
           />
         </section>
@@ -156,7 +155,6 @@ export class UploadPage implements OnInit {
   protected readonly rejections = signal<{ name: string; reason: string }[]>([]);
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
-  private readonly earliestModified = signal<number | undefined>(undefined);
 
   protected readonly visibleItems = computed(() =>
     this.queue.items().filter((item) => item.status !== 'cancelled'),
@@ -171,15 +169,6 @@ export class UploadPage implements OnInit {
     if (seconds < 60) return `${seconds} Sekunden`;
     const minutes = Math.round(seconds / 60);
     return `${minutes} ${minutes === 1 ? 'Minute' : 'Minuten'}`;
-  });
-
-  /**
-   * `lastModified` as a stand-in for EXIF capture time. Not exact -- a copied
-   * file carries the copy date -- but free, and the student can correct it.
-   */
-  protected readonly suggestedMonth = computed(() => {
-    const earliest = this.earliestModified();
-    return earliest === undefined ? undefined : new Date(earliest).toISOString().slice(0, 7);
   });
 
   protected readonly liveMessage = computed(() => {
@@ -198,16 +187,6 @@ export class UploadPage implements OnInit {
   }
 
   protected onFilesPicked(files: File[]): void {
-    const earliest = files.reduce(
-      (min, file) => Math.min(min, file.lastModified),
-      Number.POSITIVE_INFINITY,
-    );
-    if (Number.isFinite(earliest)) {
-      this.earliestModified.update((current) =>
-        current === undefined ? earliest : Math.min(current, earliest),
-      );
-    }
-
     const result = this.queue.add(files);
     this.rejections.set(result.rejected);
   }
