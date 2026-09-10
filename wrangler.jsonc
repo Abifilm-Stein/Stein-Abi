@@ -1,0 +1,21 @@
+{
+  // Cloudflare Workers configuration for a static Angular SPA.
+  // There is no Worker script: this is an assets-only Worker, so no "main".
+  "name": "stein-abi",
+  "compatibility_date": "2026-09-10",
+
+  "assets": {
+    "directory": "./dist/Steinabi/browser",
+
+    // CRITICAL for an SPA. Angular does the routing in the browser, so the
+    // server has no file at /upload or /datenschutz. Without this, opening
+    // such a URL directly -- or just pressing reload on it -- returns 404.
+    // "single-page-application" serves index.html for unmatched paths while
+    // still 404ing missing assets like /foo.js.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -107,6 +107,31 @@ Serverseitig zwingend nachzuziehen:
 - **Thumbnails/Proxies** per ffmpeg als Ableitung; Originale nie neu kodieren.
 - **Löschung der Storage-Objekte** in denselben Jobs, die DB-Zeilen löschen.
 
+## Deployment (Cloudflare Workers)
+
+In den Cloudflare-Einstellungen unter **Workers & Pages → Build**:
+
+| Feld | Wert |
+|---|---|
+| Build command | `npm run build` |
+| Deploy command | `npx wrangler deploy` |
+
+Die Konfiguration steht in [wrangler.jsonc](wrangler.jsonc). Zwei Dinge daran sind
+nicht optional:
+
+- **`not_found_handling: "single-page-application"`** — Angular routet im Browser,
+  auf dem Server existiert keine Datei `/upload`. Ohne diese Zeile liefert ein
+  direkt aufgerufener oder neu geladener Unterpfad einen 404.
+- **`directory: "./dist/Steinabi/browser"`** — Angular legt das Ergebnis in einen
+  `browser/`-Unterordner, nicht direkt in `dist/`.
+
+Security-Header und Cache-Regeln stehen in [public/_headers](public/_headers) und
+werden vom Build in den Output kopiert. Wichtig beim Anbinden des Backends: die
+CSP-Direktive `connect-src` muss um die Supabase-Domain erweitert werden, sonst
+blockiert der Browser jeden Upload.
+
+Lokal testen: `npm run build && npm run preview`.
+
 ## Offene Punkte vor dem Livegang
 
 - [ ] Alle `⟨Platzhalter⟩` in `core/config.ts`, `/impressum`, `/datenschutz` ersetzen
@@ -114,7 +139,8 @@ Serverseitig zwingend nachzuziehen:
       freigeben lassen — der Entwurf ist **nicht juristisch geprüft**
 - [ ] Echte Team-Authentifizierung; der Demo-Login ist ein Platzhalter
 - [ ] Offizielles Schulgrün in `src/styles.css` eintragen, falls vorhanden
-- [ ] Security-Header setzen (CSP, `X-Content-Type-Options`, `Referrer-Policy`)
+- [x] Security-Header setzen — `public/_headers`
+- [ ] `connect-src` in `public/_headers` um die Backend-Domain erweitern
 - [ ] Lighthouse auf `/` und `/upload` prüfen
 - [ ] Echttest: 500-MB-Video mit unterbrochener Verbindung, HEIC vom iPhone
 - [ ] Entscheidung offen: öffentliche Galerie ja/nein (aktuell nicht gebaut)
