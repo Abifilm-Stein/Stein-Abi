@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Abifilm – Freiherr-vom-Stein-Gymnasium</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description"
+        content="Fotos und Videos für den Abifilm des Freiherr-vom-Stein-Gymnasiums hochladen.">
+  <meta name="theme-color" content="#2f6b46" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#16211b" media="(prefers-color-scheme: dark)">
+  <meta name="robots" content="noindex">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+
+  <!--
+    Runtime configuration. Overwritten at deploy time (or by a hosting
+    provider's env-substitution step) so the same build works per environment.
+    While both values are empty the app runs in DEMO MODE: uploads are
+    simulated and nothing leaves the browser.
+  -->
+  <script>
+    window.__STEINABI__ = {
+      uploadEndpoint: '',
+      apiBaseUrl: '',
+    };
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+  <noscript>
+    Diese Seite benötigt JavaScript, um Dateien hochladen zu können. Bitte aktiviere
+    JavaScript in deinem Browser.
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,52 @@
+import { Routes } from '@angular/router';
+import { teamGuard } from './core/auth/auth.service';
+import { Home } from './features/home/home';
+import { UploadPage } from './features/upload/upload-page';
+
+const SUFFIX = ' – Abifilm FvS';
+
+/**
+ * `/` and `/upload` load eagerly: they are the entire student path and must
+ * not wait on a second chunk. Everything else is lazy.
+ */
+export const routes: Routes = [
+  { path: '', component: Home, title: 'Fotos & Videos gesucht' + SUFFIX },
+  { path: 'upload', component: UploadPage, title: 'Hochladen' + SUFFIX },
+  {
+    path: 'upload/danke',
+    title: 'Danke' + SUFFIX,
+    loadComponent: () => import('./features/upload/thanks').then((m) => m.Thanks),
+  },
+  {
+    path: 'datenschutz',
+    title: 'Datenschutzerklärung' + SUFFIX,
+    loadComponent: () => import('./features/legal/privacy').then((m) => m.Privacy),
+  },
+  {
+    path: 'impressum',
+    title: 'Impressum' + SUFFIX,
+    loadComponent: () => import('./features/legal/imprint').then((m) => m.Imprint),
+  },
+  {
+    path: 'einwilligung',
+    title: 'Einwilligung der Erziehungsberechtigten' + SUFFIX,
+    loadComponent: () =>
+      import('./features/legal/parental-consent').then((m) => m.ParentalConsent),
+  },
+  {
+    path: 'team',
+    title: 'Team-Login' + SUFFIX,
+    loadComponent: () => import('./features/team/team-login').then((m) => m.TeamLogin),
+  },
+  {
+    path: 'team/uebersicht',
+    title: 'Beiträge' + SUFFIX,
+    canActivate: [teamGuard],
+    loadComponent: () => import('./features/team/team-dashboard').then((m) => m.TeamDashboard),
+  },
+  {
+    path: '**',
+    title: 'Seite nicht gefunden' + SUFFIX,
+    loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),
+  },
+];
