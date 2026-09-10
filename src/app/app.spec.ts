@@ -16,6 +16,18 @@ describe('App', () => {
     expect(fixture.componentInstance).toBeTruthy();
   });
 
+  it('shows the SteinAbi wordmark and logo in the header', async () => {
+    const fixture = TestBed.createComponent(App);
+    await fixture.whenStable();
+    const header = (fixture.nativeElement as HTMLElement).querySelector('header');
+
+    expect(header?.textContent).toContain('SteinAbi');
+    expect(header?.textContent).not.toContain('Abifilm');
+
+    // Six rectangles: if the mark gets refactored away, this fails loudly.
+    expect(header?.querySelectorAll('app-logo svg rect').length).toBe(6);
+  });
+
   it('renders the shell with a skip link and the legal footer links', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();

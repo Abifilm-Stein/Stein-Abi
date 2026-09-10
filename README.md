@@ -1,8 +1,14 @@
-# Abifilm-Sammelplattform
+# SteinAbi
 
 Website, über die Schülerinnen und Schüler Fotos und Videos für den Abifilm des
 Freiherr-vom-Stein-Gymnasiums hochladen. Angular 22 (standalone, Signals, zoneless) +
 Tailwind CSS 4, Tests mit Vitest.
+
+Das Logo liegt als Inline-SVG in [src/app/shared/logo.ts](src/app/shared/logo.ts)
+(sechs Rechtecke, aus der Vorlage nachgebaut) und als Tab-Icon in
+[public/favicon.svg](public/favicon.svg). Die Markenfarbe steht als
+`--color-brand` in `src/styles.css` — bewusst getrennt von `--color-primary`,
+weil sie für Text zu hell ist und nur für die Marke gilt.
 
 Der ursprüngliche Auftrag liegt in [ABIFILM-PROMPT.md](ABIFILM-PROMPT.md).
 

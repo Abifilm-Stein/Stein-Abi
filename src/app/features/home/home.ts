@@ -29,7 +29,7 @@ const WANTED = [
   template: `
     <section class="mb-14">
       <p class="mb-3 inline-block rounded-full bg-primary-soft px-3 py-1 text-sm font-bold text-primary-ink">
-        Abifilm {{ abiYear }}
+        SteinAbi {{ abiYear }}
       </p>
 
       <h1 class="mb-4 max-w-3xl text-4xl font-bold sm:text-5xl">

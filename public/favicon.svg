@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!--
+    Tab icon. Only the left cluster of the full mark: the complete logo is 3:1
+    and turns into unreadable mush at 16px, while the three uprights stay
+    recognisable. Colour is literal because a favicon cannot inherit
+    currentColor from the page -- keep it in sync with --color-brand.
+  -->
+  <rect x="6" y="30" width="22" height="52" fill="#8ccb6b"/>
+  <rect x="36" y="56" width="22" height="26" fill="#8ccb6b"/>
+  <rect x="66" y="12" width="18" height="70" fill="#8ccb6b"/>
+</svg>

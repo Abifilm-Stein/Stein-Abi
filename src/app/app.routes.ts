@@ -4,7 +4,7 @@ import { teamGuard } from './core/auth/auth.service';
 import { Home } from './features/home/home';
 import { UploadPage } from './features/upload/upload-page';
 
-const SUFFIX = ' – Abifilm FvS';
+const SUFFIX = ' – SteinAbi';
 
 /**
  * `/` and `/upload` load eagerly: they are the entire student path and must
