@@ -66,6 +66,9 @@ src/app/
 supabase/migrations/
   0001_init.sql                Schema inkl. Row Level Security
   0002_accounts.sql            Vorgenerierte Konten, Zugriff auf eigene Beiträge
+  0003_drop_extended_usage.sql Nutzung außerhalb des Films entfernt
+  0004_grade_instead_of_date.sql Stufe statt Aufnahmedatum
+  0005_withdrawal_requests.sql Rückzugsanträge inkl. Sperr-Trigger
 ```
 
 ## Anmeldung und „Meine Beiträge“
@@ -101,6 +104,35 @@ select provision_account('Mia Beispiel', 'Q2', 'DEMA-Q2MJ-A234');
 Dass jemand nur die **eigenen** Beiträge sieht, erzwingt die Datenbank über
 `current_account_id()` aus einem JWT-Claim — nicht die Website. Eine im
 Request mitgeschickte Konto-ID würde sonst reichen, um fremde Uploads zu lesen.
+
+## Rückzug von Beiträgen
+
+Hochgeladenes Material löscht sich **nicht** auf Knopfdruck. Wer einen Beitrag
+entfernen möchte, stellt unter „Meine Beiträge“ einen Antrag; das Team bearbeitet
+ihn unter `/team/rueckzuege`. Grund: der Film kann zu diesem Zeitpunkt schon um
+eine Aufnahme herum geschnitten sein.
+
+**Ein Rückzug kann nicht abgelehnt werden.** Nach Art. 7 Abs. 3 DSGVO darf eine
+Einwilligung jederzeit widerrufen werden. Der Workflow koordiniert die Entfernung,
+er entscheidet nicht über sie. Deshalb gibt es bewusst **keinen Status
+„abgelehnt“** — ein Antrag endet als:
+
+| Status | Bedeutung |
+|---|---|
+| `offen` | Antrag liegt vor. Material darf **nicht** weiter im Film verwendet werden. |
+| `erledigt` | Team hat das Material gelöscht. |
+| `zurueckgenommen` | Die Person hat den Antrag selbst zurückgenommen. |
+
+Das „nicht verwenden“ hängt nicht am Frontend: ein Datenbank-Trigger
+(`block_use_while_withdrawal_open`) verhindert, dass ein Beitrag mit offenem
+Antrag auf `verwendet` gesetzt wird. Ein Fehlklick in der Oberfläche kann es
+also nicht umgehen. Ebenso lässt ein partieller Unique-Index nur **einen**
+offenen Antrag pro Beitrag zu, und die RLS-Policy erlaubt Schüler:innen als
+einzige Änderung `offen → zurueckgenommen` am eigenen Antrag.
+
+Wichtig fürs Backend: Beim Abschluss mit `erledigt` müssen auch die
+**Storage-Objekte** gelöscht werden. Der Cascade entfernt nur die
+Asset-Datensätze, nicht die Dateien.
 
 ## Warum der Upload so gebaut ist
 
@@ -142,7 +174,10 @@ Erwartete API-Endpunkte:
 | `POST` | `/auth/sign-in` | Team-Anmeldung |
 | `POST` | `/submissions` | Beitrag anlegen (verknüpft die Assets) |
 | `GET` | `/submissions/mine` | Eigene Beiträge — Besitzer kommt aus dem Token, nie aus der URL |
-| `DELETE` | `/submissions/mine/:id` | Eigenen Beitrag zurückziehen |
+| `POST` | `/submissions/mine/:id/withdrawal` | Rückzugsantrag stellen |
+| `DELETE` | `/withdrawals/mine/:id` | Eigenen Antrag zurücknehmen |
+| `GET` | `/withdrawals` | Anträge für das Team |
+| `PATCH` | `/withdrawals/:id` | Antrag abschließen (löscht bei `erledigt` auch die Dateien) |
 | `GET` | `/submissions` | Liste für das Team (RLS-geschützt) |
 | `PATCH` | `/submissions/:id` | Review-Status setzen |
 | `DELETE` | `/submissions/:id` | Beitrag inkl. Storage-Objekte löschen |

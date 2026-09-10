@@ -62,6 +62,13 @@ export const routes: Routes = [
     loadComponent: () => import('./features/team/team-dashboard').then((m) => m.TeamDashboard),
   },
   {
+    path: 'team/rueckzuege',
+    title: 'Rückzugsanträge' + SUFFIX,
+    canActivate: [teamGuard],
+    loadComponent: () =>
+      import('./features/team/withdrawal-requests').then((m) => m.WithdrawalRequests),
+  },
+  {
     path: '**',
     title: 'Seite nicht gefunden' + SUFFIX,
     loadComponent: () => import('./features/not-found/not-found').then((m) => m.NotFound),

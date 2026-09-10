@@ -129,12 +129,22 @@ import { CONSENT_VERSION, CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../c
         </p>
         <p class="mb-2 text-muted">
           <strong class="text-ink">Widerruf:</strong> Du kannst deine Einwilligung jederzeit
-          ohne Angabe von Gründen zurückziehen. Einzelne Beiträge kannst du unter „Meine
-          Beiträge“ selbst zurückziehen; für alles Weitere genügt eine E-Mail an
+          ohne Angabe von Gründen zurückziehen. Stelle dafür unter „Meine Beiträge“ einen
+          Rückzugsantrag, oder schreib an
           <a [href]="'mailto:' + contact.email" class="text-primary-ink underline">{{
             contact.email
           }}</a>
           . Die Rechtmäßigkeit der Verarbeitung bis zum Widerruf bleibt davon unberührt.
+        </p>
+        <p class="mb-2 text-muted">
+          Beiträge werden nicht sofort automatisch gelöscht, weil der Film zu diesem
+          Zeitpunkt bereits um eine Aufnahme herum geschnitten sein kann. Das Abifilm-Team
+          nimmt deshalb Kontakt mit dir auf und entfernt das Material anschließend.
+          <strong class="text-ink">
+            Ablehnen kann das Team einen Rückzug nicht
+          </strong>
+          — ab dem Antrag wird das Material nicht mehr weiterverwendet und danach
+          gelöscht.
         </p>
         <p class="text-muted">
           Außerdem kannst du dich bei der zuständigen Aufsichtsbehörde beschweren:

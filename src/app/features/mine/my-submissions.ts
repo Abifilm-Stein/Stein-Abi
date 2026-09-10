@@ -13,9 +13,7 @@ import { formatBytes } from '../../core/upload/file-validation';
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold">Meine Beiträge</h1>
-        <p class="text-muted">
-          Angemeldet als {{ session.account()?.displayName }}
-        </p>
+        <p class="text-muted">Angemeldet als {{ session.account()?.displayName }}</p>
       </div>
       <a routerLink="/upload" class="btn btn-primary btn-sm">Weitere hochladen</a>
     </div>
@@ -80,17 +78,76 @@ import { formatBytes } from '../../core/upload/file-validation';
                 >
                   {{ statusHints[submission.reviewStatus] }}
                 </span>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-sm"
-                  style="color: var(--danger)"
-                  [disabled]="withdrawing() === submission.id"
-                  (click)="withdraw(submission)"
-                >
-                  {{ withdrawing() === submission.id ? 'Wird entfernt…' : 'Zurückziehen' }}
-                </button>
+
+                @if (!submission.withdrawal) {
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm"
+                    (click)="openRequest(submission.id)"
+                  >
+                    Rückzug beantragen
+                  </button>
+                }
               </div>
             </div>
+
+            @if (submission.withdrawal) {
+              <div class="mt-3 rounded-lg bg-warn-soft p-3 text-sm" style="color: var(--warn)">
+                <p class="font-semibold">
+                  Rückzug beantragt am {{ formatDate(submission.withdrawal.createdAt) }}
+                </p>
+                <p class="mt-1">
+                  Das Abifilm-Team meldet sich bei dir. Bis dahin wird das Material nicht
+                  weiterverwendet.
+                </p>
+                @if (submission.withdrawal.reason) {
+                  <p class="mt-2 italic">„{{ submission.withdrawal.reason }}“</p>
+                }
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-sm mt-3"
+                  [disabled]="busy() === submission.id"
+                  (click)="cancelRequest(submission)"
+                >
+                  Antrag zurücknehmen
+                </button>
+              </div>
+            } @else if (requesting() === submission.id) {
+              <form
+                class="mt-3 rounded-lg border border-line p-3"
+                (submit)="submitRequest($event, submission)"
+              >
+                <label [attr.for]="'reason-' + submission.id" class="field-label">
+                  Warum möchtest du den Beitrag zurückziehen?
+                </label>
+                <textarea
+                  [attr.id]="'reason-' + submission.id"
+                  class="field-input"
+                  rows="3"
+                  required
+                  placeholder="z. B. „Eine Person auf dem Video möchte nicht im Film vorkommen.“"
+                  [value]="reason()"
+                  (input)="reason.set(readValue($event))"
+                ></textarea>
+                <p class="mt-1.5 text-xs text-muted">
+                  Der Beitrag wird nicht sofort gelöscht. Das Team nimmt Kontakt auf und
+                  entfernt das Material dann — der Film ist unter Umständen schon darum
+                  herum geschnitten.
+                </p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    class="btn btn-primary btn-sm"
+                    [disabled]="busy() === submission.id || reason().trim().length < 3"
+                  >
+                    {{ busy() === submission.id ? 'Wird gesendet…' : 'Antrag stellen' }}
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="closeRequest()">
+                    Abbrechen
+                  </button>
+                </div>
+              </form>
+            }
 
             <ul class="mt-3 flex flex-wrap gap-2 border-t border-line pt-3 text-xs">
               @for (asset of submission.assets; track asset.storagePath) {
@@ -110,9 +167,13 @@ import { formatBytes } from '../../core/upload/file-validation';
           Abifilm-Team kann sie öffnen. Deshalb siehst du hier die Dateinamen statt der
           Bilder.
         </p>
+        <h2 class="mb-2 font-bold text-ink">Und warum kann ich nicht direkt löschen?</h2>
         <p>
-          „Zurückziehen“ löscht den Beitrag samt Dateien endgültig. Wenn du dabei Hilfe
-          brauchst, schreib an
+          Weil der Film zum Zeitpunkt deiner Anfrage schon um eine Aufnahme herum
+          geschnitten sein kann. Ein Antrag stellt sicher, dass das Team es mitbekommt und
+          mit dir bespricht. <strong class="text-ink">Ablehnen kann es den Rückzug nicht</strong> —
+          deine Einwilligung darfst du jederzeit zurückziehen. Bei Problemen erreichst du
+          uns unter
           <a [href]="'mailto:' + contact.email" class="font-semibold text-primary-ink underline">{{
             contact.email
           }}</a
@@ -133,7 +194,12 @@ export class MySubmissions implements OnInit {
   protected readonly submissions = signal<Submission[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadError = signal(false);
-  protected readonly withdrawing = signal<string | null>(null);
+
+  /** Submission whose request form is open. */
+  protected readonly requesting = signal<string | null>(null);
+  protected readonly reason = signal('');
+  /** Submission currently being written to, to disable its buttons. */
+  protected readonly busy = signal<string | null>(null);
 
   protected readonly assetCount = computed(() =>
     this.submissions().reduce((sum, entry) => sum + entry.assets.length, 0),
@@ -167,24 +233,52 @@ export class MySubmissions implements OnInit {
     }
   }
 
-  protected async withdraw(submission: Submission): Promise<void> {
+  protected openRequest(submissionId: string): void {
+    this.reason.set('');
+    this.requesting.set(submissionId);
+  }
+
+  protected closeRequest(): void {
+    this.requesting.set(null);
+    this.reason.set('');
+  }
+
+  protected readValue(event: Event): string {
+    return (event.target as HTMLTextAreaElement).value;
+  }
+
+  protected async submitRequest(event: Event, submission: Submission): Promise<void> {
+    event.preventDefault();
+
     const account = this.session.account();
-    if (!account) return;
+    const reason = this.reason().trim();
+    if (!account || reason.length < 3) return;
 
-    const fileCount = submission.assets.length;
-    const confirmed = confirm(
-      `Diesen Beitrag mit ${fileCount} ${fileCount === 1 ? 'Datei' : 'Dateien'} endgültig zurückziehen? Das lässt sich nicht rückgängig machen.`,
-    );
-    if (!confirmed) return;
-
-    this.withdrawing.set(submission.id);
+    this.busy.set(submission.id);
     try {
-      await this.gateway.withdraw(submission.id, account.id);
-      this.submissions.update((entries) => entries.filter((entry) => entry.id !== submission.id));
+      await this.gateway.requestWithdrawal(submission.id, account.id, reason);
+      this.closeRequest();
+      await this.reload();
     } catch {
       this.loadError.set(true);
     } finally {
-      this.withdrawing.set(null);
+      this.busy.set(null);
+    }
+  }
+
+  protected async cancelRequest(submission: Submission): Promise<void> {
+    const account = this.session.account();
+    const request = submission.withdrawal;
+    if (!account || !request) return;
+
+    this.busy.set(submission.id);
+    try {
+      await this.gateway.cancelWithdrawal(request.id, account.id);
+      await this.reload();
+    } catch {
+      this.loadError.set(true);
+    } finally {
+      this.busy.set(null);
     }
   }
 

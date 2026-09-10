@@ -60,4 +60,49 @@ export interface Submission extends SubmissionDraft {
   /** Which version of the consent wording was actually agreed to. */
   consentVersion: string;
   reviewStatus: ReviewStatus;
+  /** Set while a withdrawal request exists for this submission. */
+  withdrawal?: WithdrawalSummary;
+}
+
+/* -------------------------------------------------------------------------
+ * Withdrawal requests
+ *
+ * Uploads are not deleted on the spot: the film may already be cut around a
+ * clip, so removing one is a conversation with the team rather than a button.
+ *
+ * IMPORTANT, and the reason there is no "rejected" state: withdrawing
+ * consent under Art. 7(3) GDPR cannot be refused. This workflow exists to
+ * coordinate the removal, never to decide whether it happens. A request
+ * therefore ends either as `erledigt` (the material was deleted) or as
+ * `zurueckgenommen` -- and only the person who filed it may take it back.
+ * From the moment a request exists the material counts as blocked and must
+ * not be cut into the film.
+ * ---------------------------------------------------------------------- */
+
+export type WithdrawalStatus = 'offen' | 'erledigt' | 'zurueckgenommen';
+
+export const WITHDRAWAL_STATUS_LABELS: Record<WithdrawalStatus, string> = {
+  offen: 'Offen',
+  erledigt: 'Erledigt, Material gelöscht',
+  zurueckgenommen: 'Von der Person zurückgenommen',
+};
+
+export interface WithdrawalSummary {
+  id: string;
+  status: WithdrawalStatus;
+  reason: string;
+  createdAt: string;
+}
+
+export interface WithdrawalRequest extends WithdrawalSummary {
+  submissionId: string;
+  accountId: string;
+  /** Denormalised so the team sees who asked without a second lookup. */
+  uploaderName: string;
+  uploaderClass: string;
+  /** How many files the request concerns, for the team overview. */
+  assetCount: number;
+  resolvedAt?: string;
+  /** What the team noted when closing it. */
+  resolutionNote?: string;
 }

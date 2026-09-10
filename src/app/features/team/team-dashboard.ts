@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CATEGORIES, gradeLabel } from '../../core/config';
 import { ReviewStatus, REVIEW_STATUS_LABELS, Submission } from '../../core/models';
@@ -11,14 +11,38 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
 
 @Component({
   selector: 'app-team-dashboard',
+  imports: [RouterLink],
   template: `
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold">Beiträge</h1>
         <p class="text-muted">{{ submissions().length }} Einsendungen insgesamt</p>
       </div>
-      <button type="button" class="btn btn-ghost btn-sm" (click)="signOut()">Abmelden</button>
+      <div class="flex flex-wrap items-center gap-2">
+        <a routerLink="/team/rueckzuege" class="btn btn-ghost btn-sm">
+          Rückzugsanträge
+          @if (openWithdrawals() > 0) {
+            <span
+              class="ml-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-bold"
+              style="color: var(--warn)"
+              >{{ openWithdrawals() }}</span
+            >
+          }
+        </a>
+        <button type="button" class="btn btn-ghost btn-sm" (click)="signOut()">Abmelden</button>
+      </div>
     </div>
+
+    @if (openWithdrawals() > 0) {
+      <div class="card mb-6 border-warn p-4 text-sm" role="status" style="color: var(--warn)">
+        <strong>
+          {{ openWithdrawals() }}
+          {{ openWithdrawals() === 1 ? 'offener Rückzugsantrag' : 'offene Rückzugsanträge' }}.
+        </strong>
+        Betroffenes Material darf bis zur Klärung nicht weiter im Film verwendet werden.
+        <a routerLink="/team/rueckzuege" class="font-semibold underline">Jetzt bearbeiten</a>
+      </div>
+    }
 
     <!-- Key figures -->
     <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -122,6 +146,14 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                   <p class="mt-2 text-sm">{{ submission.description }}</p>
                 }
                 <p class="mt-2 flex flex-wrap gap-2 text-xs text-muted">
+                  @if (submission.withdrawal) {
+                    <span
+                      class="rounded bg-warn-soft px-2 py-0.5 font-bold"
+                      style="color: var(--warn)"
+                    >
+                      Rückzug beantragt — nicht verwenden
+                    </span>
+                  }
                   <span class="rounded bg-surface px-2 py-0.5">
                     Einwilligung {{ submission.consentVersion }}
                   </span>
@@ -179,6 +211,7 @@ export class TeamDashboard implements OnInit {
 
   protected readonly submissions = signal<Submission[]>([]);
   protected readonly loading = signal(true);
+  protected readonly openWithdrawals = signal(0);
 
   // Signals, not plain properties: `filtered` is a computed, and a computed
   // only recomputes when a signal it read has changed. Plain fields written by
@@ -228,6 +261,14 @@ export class TeamDashboard implements OnInit {
       this.submissions.set([]);
     } finally {
       this.loading.set(false);
+    }
+
+    // Separate and non-fatal: a failing counter must not blank the table.
+    try {
+      const requests = await this.gateway.listWithdrawalRequests();
+      this.openWithdrawals.set(requests.filter((entry) => entry.status === 'offen').length);
+    } catch {
+      this.openWithdrawals.set(0);
     }
   }
 

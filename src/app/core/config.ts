@@ -4,10 +4,10 @@
  */
 
 export const SCHOOL_NAME = 'Freiherr-vom-Stein-Gymnasium';
-export const ABI_YEAR = 2026;
+export const ABI_YEAR = 2027;
 
-/** Submission deadline. TODO: confirm with the film team. */
-export const SUBMISSION_DEADLINE = new Date('2026-03-31T23:59:59+01:00');
+/** Submission deadline. TODO: confirm the exact date with the film team. */
+export const SUBMISSION_DEADLINE = new Date('2027-03-31T23:59:59+01:00');
 
 /**
  * Version of the consent text shown at upload time. Bump this whenever the
