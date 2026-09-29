@@ -1,8 +1,7 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { gradeLabel } from '../../core/config';
+import { MediaGateway } from '../../core/media/media-gateway';
 import { WITHDRAWAL_STATUS_LABELS, WithdrawalRequest } from '../../core/models';
-import { SubmissionGateway } from '../../core/submissions/submission-gateway';
 
 @Component({
   selector: 'app-withdrawal-requests',
@@ -11,21 +10,19 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
       <div>
         <h1 class="text-3xl font-bold">Rückzugsanträge</h1>
-        <p class="text-muted">
-          {{ open().length }} offen · {{ requests().length }} insgesamt
-        </p>
+        <p class="text-muted">{{ open().length }} offen · {{ requests().length }} insgesamt</p>
       </div>
-      <a routerLink="/team/uebersicht" class="btn btn-ghost btn-sm">Zu den Beiträgen</a>
+      <a routerLink="/team/uebersicht" class="btn btn-ghost btn-sm">Zu den Dateien</a>
     </div>
 
     <div class="card mb-6 border-warn p-4 text-sm" style="color: var(--warn)">
       <p class="mb-1 font-bold">Ein Rückzug kann nicht abgelehnt werden.</p>
       <p>
         Eine Einwilligung darf nach Art. 7 Abs. 3 DSGVO jederzeit zurückgezogen werden.
-        Dieser Bereich dient dazu, die Entfernung zu koordinieren — nicht dazu, über sie
-        zu entscheiden. Bis ein Antrag erledigt ist, darf das Material
+        Dieser Bereich dient dazu, die Entfernung zu koordinieren — nicht dazu, über sie zu
+        entscheiden. Bis ein Antrag erledigt ist, darf die Datei
         <strong>nicht weiter im Film verwendet</strong> werden. „Zurückgenommen“ ist nur
-        zulässig, wenn die Person selbst zugestimmt hat, das Material doch zu behalten.
+        zulässig, wenn die Person selbst zugestimmt hat, die Datei doch zu behalten.
       </p>
     </div>
 
@@ -48,28 +45,23 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
       <div class="card p-10 text-center">
         <p class="font-semibold">Keine Anträge</p>
         <p class="mt-1 text-sm text-muted">
-          Hier erscheinen Anträge, wenn jemand einen Beitrag zurückziehen möchte.
+          Hier erscheinen Anträge, wenn jemand eine Datei zurückziehen möchte.
         </p>
       </div>
     } @else {
       <ul class="space-y-3">
         @for (request of requests(); track request.id) {
-          <li
-            class="card p-4"
-            [class.border-warn]="request.status === 'offen'"
-          >
+          <li class="card p-4" [class.border-warn]="request.status === 'offen'">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="font-bold">
                   {{ request.uploaderName }}
                   <span class="font-normal text-muted">· {{ request.uploaderClass }}</span>
                 </p>
-                <p class="mt-0.5 text-sm text-muted">
-                  {{ request.assetCount }}
-                  {{ request.assetCount === 1 ? 'Datei' : 'Dateien' }} · beantragt am
-                  {{ formatDate(request.createdAt) }}
+                <p class="mt-0.5 truncate text-sm text-muted">
+                  {{ request.title }} · beantragt am {{ formatDate(request.createdAt) }}
                 </p>
-                <p class="mt-2 text-sm italic">„{{ request.reason }}“</p>
+                <p class="mt-2 text-sm italic">{{ request.reason }}</p>
               </div>
 
               <span
@@ -92,7 +84,6 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
                 <input
                   [attr.id]="'note-' + request.id"
                   class="field-input"
-                  placeholder="z. B. „Mit Lena telefoniert, Clip aus Szene 4 entfernt.“"
                   [value]="noteFor(request.id)"
                   (input)="setNote(request.id, readValue($event))"
                 />
@@ -104,7 +95,7 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
                     [disabled]="busy() === request.id"
                     (click)="outcome.set('erledigt')"
                   >
-                    {{ busy() === request.id ? 'Wird gelöscht…' : 'Material löschen und erledigen' }}
+                    {{ busy() === request.id ? 'Wird gelöscht…' : 'Datei löschen und erledigen' }}
                   </button>
                   <button
                     type="submit"
@@ -116,7 +107,7 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
                   </button>
                 </div>
                 <p class="mt-2 text-xs text-muted">
-                  „Löschen und erledigen“ entfernt den Beitrag samt Dateien endgültig.
+                  „Löschen und erledigen“ entfernt die Datei endgültig.
                 </p>
               </form>
             } @else {
@@ -136,10 +127,9 @@ import { SubmissionGateway } from '../../core/submissions/submission-gateway';
   `,
 })
 export class WithdrawalRequests implements OnInit {
-  private readonly gateway = inject(SubmissionGateway);
+  private readonly gateway = inject(MediaGateway);
 
   protected readonly statusLabels = WITHDRAWAL_STATUS_LABELS;
-  protected readonly gradeLabel = gradeLabel;
 
   protected readonly requests = signal<WithdrawalRequest[]>([]);
   protected readonly loading = signal(true);
@@ -162,7 +152,7 @@ export class WithdrawalRequests implements OnInit {
     this.loading.set(true);
     this.loadError.set(false);
     try {
-      this.requests.set(await this.gateway.listWithdrawalRequests());
+      this.requests.set(await this.gateway.listWithdrawals());
     } catch {
       this.loadError.set(true);
     } finally {
@@ -190,11 +180,9 @@ export class WithdrawalRequests implements OnInit {
 
     const confirmed =
       outcome === 'erledigt'
-        ? confirm(
-            `Beitrag von ${request.uploaderName} mit ${request.assetCount} Datei(en) endgültig löschen?`,
-          )
+        ? confirm(`Datei "${request.title}" von ${request.uploaderName} endgültig löschen?`)
         : confirm(
-            `Antrag von ${request.uploaderName} als zurückgenommen schließen? Das ist nur zulässig, wenn ${request.uploaderName} dem zugestimmt hat.`,
+            `Antrag von ${request.uploaderName} als zurückgenommen schließen? Das ist nur zulässig, wenn die Person zugestimmt hat.`,
           );
     if (!confirmed) return;
 

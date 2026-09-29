@@ -2,9 +2,9 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CATEGORIES, gradeLabel } from '../../core/config';
-import { ReviewStatus, REVIEW_STATUS_LABELS, Submission } from '../../core/models';
+import { MediaGateway } from '../../core/media/media-gateway';
+import { MediaItem, REVIEW_STATUS_LABELS, ReviewStatus } from '../../core/models';
 import { isDemoMode } from '../../core/runtime-config';
-import { SubmissionGateway } from '../../core/submissions/submission-gateway';
 import { formatBytes } from '../../core/upload/file-validation';
 
 const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'];
@@ -15,8 +15,8 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
   template: `
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold">Beiträge</h1>
-        <p class="text-muted">{{ submissions().length }} Einsendungen insgesamt</p>
+        <h1 class="text-3xl font-bold">Dateien</h1>
+        <p class="text-muted">{{ items().length }} insgesamt</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <a routerLink="/team/rueckzuege" class="btn btn-ghost btn-sm">
@@ -44,10 +44,9 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
       </div>
     }
 
-    <!-- Key figures -->
     <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
       <div class="card p-4">
-        <p class="text-2xl font-bold">{{ assetCount() }}</p>
+        <p class="text-2xl font-bold">{{ items().length }}</p>
         <p class="text-xs text-muted">Dateien</p>
       </div>
       <div class="card p-4">
@@ -64,7 +63,6 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
       </div>
     </div>
 
-    <!-- Filters -->
     <div class="card mb-6 grid gap-4 p-4 sm:grid-cols-3">
       <div>
         <label for="filter-category" class="field-label">Anlass</label>
@@ -99,7 +97,7 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
         <input
           id="filter-search"
           class="field-input"
-          placeholder="Name oder Beschreibung"
+          placeholder="Name, Titel oder Beschreibung"
           [value]="searchFilter()"
           (input)="searchFilter.set(readValue($event))"
         />
@@ -108,8 +106,8 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
 
     @if (isDemoMode) {
       <p class="mb-6 rounded-lg bg-warn-soft p-3 text-sm" style="color: var(--warn)">
-        Demo-Modus: Die Beiträge stammen aus dem lokalen Browserspeicher. Download der
-        Originaldateien und ZIP-Export brauchen ein konfiguriertes Backend.
+        Demo-Modus: Die Einträge stammen aus dem lokalen Browserspeicher. Ansehen und
+        Herunterladen brauchen ein konfiguriertes Backend.
       </p>
     }
 
@@ -121,85 +119,73 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
       </div>
     } @else if (filtered().length === 0) {
       <div class="card p-10 text-center">
-        <p class="font-semibold">Keine Beiträge gefunden</p>
+        <p class="font-semibold">Nichts gefunden</p>
         <p class="mt-1 text-sm text-muted">
-          {{ submissions().length === 0 ? 'Es wurde noch nichts hochgeladen.' : 'Passt kein Filter?' }}
+          {{ items().length === 0 ? 'Es wurde noch nichts hochgeladen.' : 'Passt kein Filter?' }}
         </p>
       </div>
     } @else {
       <ul class="space-y-3">
-        @for (submission of filtered(); track submission.id) {
+        @for (item of filtered(); track item.id) {
           <li class="card p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="font-bold">
-                  {{ submission.uploaderName }}
-                  <span class="font-normal text-muted">· {{ submission.uploaderClass }}</span>
-                </p>
+                <p class="truncate font-bold">{{ item.title }}</p>
                 <p class="mt-0.5 text-sm text-muted">
-                  {{ submission.category }} · {{ gradeLabel(submission.grade) }} ·
-                  {{ submission.assets.length }}
-                  {{ submission.assets.length === 1 ? 'Datei' : 'Dateien' }} ·
-                  {{ sizeOf(submission) }}
+                  {{ item.uploaderName }} · {{ item.uploaderClass }} ·
+                  {{ item.type === 'video' ? 'Video' : 'Foto' }} · {{ item.category }} ·
+                  {{ gradeLabel(item.grade) }} · {{ bytes(item.fileSize) }}
                 </p>
-                @if (submission.description) {
-                  <p class="mt-2 text-sm">{{ submission.description }}</p>
+                @if (item.description) {
+                  <p class="mt-2 text-sm">{{ item.description }}</p>
                 }
                 <p class="mt-2 flex flex-wrap gap-2 text-xs text-muted">
-                  @if (submission.withdrawal) {
+                  @if (item.openWithdrawal) {
                     <span
                       class="rounded bg-warn-soft px-2 py-0.5 font-bold"
                       style="color: var(--warn)"
+                      >Rückzug beantragt — nicht verwenden</span
                     >
-                      Rückzug beantragt — nicht verwenden
-                    </span>
                   }
                   <span class="rounded bg-surface px-2 py-0.5">
-                    Einwilligung {{ submission.consentVersion }}
+                    Einwilligung {{ item.consentVersion }}
                   </span>
                 </p>
               </div>
 
               <div class="flex shrink-0 items-center gap-2">
-                <label class="sr-only" [attr.for]="'status-' + submission.id">
-                  Status von {{ submission.uploaderName }}
+                <button type="button" class="btn btn-ghost btn-sm" (click)="open(item)">
+                  Ansehen
+                </button>
+                <label class="sr-only" [attr.for]="'status-' + item.id">
+                  Status von {{ item.title }}
                 </label>
                 <select
-                  [attr.id]="'status-' + submission.id"
+                  [attr.id]="'status-' + item.id"
                   class="field-input btn-sm w-auto"
-                  [value]="submission.reviewStatus"
-                  (change)="changeStatus(submission, readValue($event))"
+                  [value]="item.reviewStatus"
+                  (change)="changeStatus(item, readValue($event))"
                 >
                   @for (status of statuses; track status) {
                     <option [value]="status">{{ statusLabels[status] }}</option>
                   }
                 </select>
-                <button
-                  type="button"
-                  class="btn btn-ghost btn-sm"
-                  style="color: var(--danger)"
-                  (click)="remove(submission)"
-                >
-                  Löschen
-                </button>
               </div>
             </div>
-
-            <ul class="mt-3 flex flex-wrap gap-2 border-t border-line pt-3 text-xs">
-              @for (asset of submission.assets; track asset.storagePath) {
-                <li class="rounded bg-surface px-2 py-1 text-muted">
-                  {{ asset.originalFilename }} · {{ bytes(asset.sizeBytes) }}
-                </li>
-              }
-            </ul>
           </li>
         }
       </ul>
+
+      @if (actionError()) {
+        <p class="field-error mt-4" role="alert">
+          <span aria-hidden="true">⚠</span><span>{{ actionError() }}</span>
+        </p>
+      }
     }
   `,
 })
 export class TeamDashboard implements OnInit {
-  private readonly gateway = inject(SubmissionGateway);
+  private readonly gateway = inject(MediaGateway);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -209,13 +195,12 @@ export class TeamDashboard implements OnInit {
   protected readonly statusLabels = REVIEW_STATUS_LABELS;
   protected readonly isDemoMode = isDemoMode;
 
-  protected readonly submissions = signal<Submission[]>([]);
+  protected readonly items = signal<MediaItem[]>([]);
   protected readonly loading = signal(true);
-  protected readonly openWithdrawals = signal(0);
+  protected readonly actionError = signal<string | null>(null);
 
   // Signals, not plain properties: `filtered` is a computed, and a computed
-  // only recomputes when a signal it read has changed. Plain fields written by
-  // ngModel would leave the filters permanently inert.
+  // only recomputes when a signal it read has changed.
   protected readonly categoryFilter = signal('');
   protected readonly statusFilter = signal('');
   protected readonly searchFilter = signal('');
@@ -225,28 +210,23 @@ export class TeamDashboard implements OnInit {
     const status = this.statusFilter();
     const needle = this.searchFilter().trim().toLowerCase();
 
-    return this.submissions().filter((submission) => {
-      if (category && submission.category !== category) return false;
-      if (status && submission.reviewStatus !== status) return false;
+    return this.items().filter((item) => {
+      if (category && item.category !== category) return false;
+      if (status && item.reviewStatus !== status) return false;
       if (needle) {
-        const haystack = `${submission.uploaderName} ${submission.description}`.toLowerCase();
+        const haystack = `${item.uploaderName} ${item.title} ${item.description}`.toLowerCase();
         if (!haystack.includes(needle)) return false;
       }
       return true;
     });
   });
 
-  protected readonly assetCount = computed(() =>
-    this.submissions().reduce((sum, entry) => sum + entry.assets.length, 0),
+  protected readonly openWithdrawals = computed(
+    () => this.items().filter((item) => item.openWithdrawal).length,
   );
 
   protected readonly totalSizeLabel = computed(() =>
-    formatBytes(
-      this.submissions().reduce(
-        (sum, entry) => sum + entry.assets.reduce((inner, a) => inner + a.sizeBytes, 0),
-        0,
-      ),
-    ),
+    formatBytes(this.items().reduce((sum, item) => sum + item.fileSize, 0)),
   );
 
   ngOnInit(): void {
@@ -256,57 +236,51 @@ export class TeamDashboard implements OnInit {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      this.submissions.set(await this.gateway.list());
+      this.items.set(await this.gateway.listAll());
     } catch {
-      this.submissions.set([]);
+      this.items.set([]);
     } finally {
       this.loading.set(false);
-    }
-
-    // Separate and non-fatal: a failing counter must not blank the table.
-    try {
-      const requests = await this.gateway.listWithdrawalRequests();
-      this.openWithdrawals.set(requests.filter((entry) => entry.status === 'offen').length);
-    } catch {
-      this.openWithdrawals.set(0);
     }
   }
 
   protected countByStatus(status: ReviewStatus): number {
-    return this.submissions().filter((entry) => entry.reviewStatus === status).length;
-  }
-
-  protected sizeOf(submission: Submission): string {
-    return formatBytes(submission.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0));
+    return this.items().filter((item) => item.reviewStatus === status).length;
   }
 
   protected bytes(value: number): string {
     return formatBytes(value);
   }
 
-  /** Reads the current value out of an input/select change event. */
   protected readValue(event: Event): string {
     return (event.target as HTMLInputElement | HTMLSelectElement).value;
   }
 
-  protected async changeStatus(submission: Submission, value: string): Promise<void> {
+  protected async open(item: MediaItem): Promise<void> {
+    this.actionError.set(null);
+    try {
+      window.open(await this.gateway.adminSignedUrl(item.id), '_blank', 'noopener');
+    } catch {
+      this.actionError.set('Die Datei konnte nicht geöffnet werden.');
+    }
+  }
+
+  protected async changeStatus(item: MediaItem, value: string): Promise<void> {
     const status = STATUSES.find((candidate) => candidate === value);
     if (!status) return;
 
-    await this.gateway.setReviewStatus(submission.id, status);
-    this.submissions.update((entries) =>
-      entries.map((entry) => (entry.id === submission.id ? { ...entry, reviewStatus: status } : entry)),
-    );
-  }
-
-  protected async remove(submission: Submission): Promise<void> {
-    const confirmed = confirm(
-      `Beitrag von ${submission.uploaderName} mit ${submission.assets.length} Datei(en) endgültig löschen?`,
-    );
-    if (!confirmed) return;
-
-    await this.gateway.remove(submission.id);
-    this.submissions.update((entries) => entries.filter((entry) => entry.id !== submission.id));
+    this.actionError.set(null);
+    try {
+      await this.gateway.setReviewStatus(item.id, status);
+      this.items.update((entries) =>
+        entries.map((entry) => (entry.id === item.id ? { ...entry, reviewStatus: status } : entry)),
+      );
+    } catch {
+      // The server refuses 'verwendet' while a withdrawal request is open.
+      this.actionError.set(
+        'Status konnte nicht gesetzt werden. Bei offenem Rückzugsantrag ist „Im Film verwendet“ gesperrt.',
+      );
+    }
   }
 
   protected signOut(): void {

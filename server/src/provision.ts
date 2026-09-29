@@ -13,7 +13,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
-import { collections, nowIso, type AccountDoc } from './db.js';
+import { collections, nowIso, type UserDoc } from './db.js';
 import { hashCode } from './session.js';
 
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
@@ -58,8 +58,10 @@ async function main(): Promise<void> {
     }
 
     const code = generateCode();
-    const account: AccountDoc = {
-      displayName: name,
+    const user: Omit<UserDoc, 'createdAt'> & { createdAt: string } = {
+      username: name,
+      email: '',
+      profileImageUrl: '',
       schoolClass,
       codeHash: await hashCode(code),
       codeHint: code.slice(0, 4),
@@ -67,7 +69,7 @@ async function main(): Promise<void> {
       createdAt: nowIso(),
     };
 
-    await collections.accounts.add(account);
+    await collections.users.add(user);
     console.log(`${name};${schoolClass};${group(code)}`);
     created++;
   }

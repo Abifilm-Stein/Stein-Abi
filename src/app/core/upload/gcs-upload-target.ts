@@ -129,7 +129,7 @@ export class GcsUploadTarget implements UploadTarget {
     if (!token) throw new UploadRejectedError('Du bist nicht mehr angemeldet.');
 
     const base = runtimeConfig.apiBaseUrl.replace(/\/$/, '');
-    const response = await fetch(`${base}/uploads`, {
+    const response = await fetch(`${base}/media/uploads`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({

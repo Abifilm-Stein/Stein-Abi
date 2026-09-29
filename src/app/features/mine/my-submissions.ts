@@ -2,8 +2,8 @@ import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SessionService } from '../../core/account/session.service';
 import { CONTACT, gradeLabel } from '../../core/config';
-import { REVIEW_STATUS_HINTS, Submission } from '../../core/models';
-import { SubmissionGateway } from '../../core/submissions/submission-gateway';
+import { MediaGateway } from '../../core/media/media-gateway';
+import { MediaItem, REVIEW_STATUS_HINTS } from '../../core/models';
 import { formatBytes } from '../../core/upload/file-validation';
 
 @Component({
@@ -12,7 +12,7 @@ import { formatBytes } from '../../core/upload/file-validation';
   template: `
     <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h1 class="text-3xl font-bold">Meine Beiträge</h1>
+        <h1 class="text-3xl font-bold">Meine Dateien</h1>
         <p class="text-muted">Angemeldet als {{ session.account()?.displayName }}</p>
       </div>
       <a routerLink="/upload" class="btn btn-primary btn-sm">Weitere hochladen</a>
@@ -21,19 +21,19 @@ import { formatBytes } from '../../core/upload/file-validation';
     @if (loading()) {
       <div class="space-y-3">
         @for (row of [1, 2]; track row) {
-          <div class="card h-28 animate-pulse"></div>
+          <div class="card h-24 animate-pulse"></div>
         }
       </div>
     } @else if (loadError()) {
       <div class="card border-danger p-6" role="alert">
         <p class="font-semibold" style="color: var(--danger)">
-          Deine Beiträge konnten nicht geladen werden.
+          Deine Dateien konnten nicht geladen werden.
         </p>
         <button type="button" class="btn btn-ghost btn-sm mt-3" (click)="reload()">
           Erneut versuchen
         </button>
       </div>
-    } @else if (submissions().length === 0) {
+    } @else if (items().length === 0) {
       <div class="card p-10 text-center">
         <p class="mb-1 font-semibold">Noch nichts hochgeladen</p>
         <p class="mb-6 text-sm text-muted">
@@ -43,104 +43,108 @@ import { formatBytes } from '../../core/upload/file-validation';
       </div>
     } @else {
       <p class="mb-4 text-sm text-muted" role="status">
-        {{ submissions().length }} {{ submissions().length === 1 ? 'Beitrag' : 'Beiträge' }} ·
-        {{ assetCount() }} {{ assetCount() === 1 ? 'Datei' : 'Dateien' }} ·
+        {{ items().length }} {{ items().length === 1 ? 'Datei' : 'Dateien' }} ·
         {{ totalSizeLabel() }}
       </p>
 
       <ul class="space-y-3">
-        @for (submission of submissions(); track submission.id) {
+        @for (item of items(); track item.id) {
           <li class="card p-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div class="min-w-0">
-                <p class="font-bold">{{ submission.category }}</p>
+                <p class="truncate font-bold">{{ item.title }}</p>
                 <p class="mt-0.5 text-sm text-muted">
-                  {{ gradeLabel(submission.grade) }} ·
-                  {{ submission.assets.length }}
-                  {{ submission.assets.length === 1 ? 'Datei' : 'Dateien' }} ·
-                  {{ sizeOf(submission) }}
+                  {{ item.type === 'video' ? 'Video' : 'Foto' }} · {{ item.category }} ·
+                  {{ gradeLabel(item.grade) }} · {{ bytes(item.fileSize) }}
                 </p>
-                @if (submission.description) {
-                  <p class="mt-2 text-sm">{{ submission.description }}</p>
+                @if (item.description) {
+                  <p class="mt-2 text-sm">{{ item.description }}</p>
                 }
                 <p class="mt-2 text-xs text-muted">
-                  Hochgeladen am {{ formatDate(submission.createdAt) }}
+                  Hochgeladen am {{ formatDate(item.createdAt) }}
                 </p>
               </div>
 
               <div class="flex shrink-0 flex-col items-end gap-2">
                 <span
                   class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                  [class.bg-primary-soft]="submission.reviewStatus === 'verwendet'"
-                  [class.text-primary-ink]="submission.reviewStatus === 'verwendet'"
-                  [class.bg-surface]="submission.reviewStatus !== 'verwendet'"
-                  [class.text-muted]="submission.reviewStatus !== 'verwendet'"
+                  [class.bg-primary-soft]="item.reviewStatus === 'verwendet'"
+                  [class.text-primary-ink]="item.reviewStatus === 'verwendet'"
+                  [class.bg-surface]="item.reviewStatus !== 'verwendet'"
+                  [class.text-muted]="item.reviewStatus !== 'verwendet'"
                 >
-                  {{ statusHints[submission.reviewStatus] }}
+                  {{ statusHints[item.reviewStatus] }}
                 </span>
 
-                @if (!submission.withdrawal) {
+                <div class="flex gap-2">
                   <button
                     type="button"
                     class="btn btn-ghost btn-sm"
-                    (click)="openRequest(submission.id)"
+                    [disabled]="busy() === item.id"
+                    (click)="open(item)"
                   >
-                    Rückzug beantragen
+                    Ansehen
                   </button>
-                }
+                  @if (!item.openWithdrawal) {
+                    <button
+                      type="button"
+                      class="btn btn-ghost btn-sm"
+                      (click)="openRequest(item.id)"
+                    >
+                      Rückzug beantragen
+                    </button>
+                  }
+                </div>
               </div>
             </div>
 
-            @if (submission.withdrawal) {
+            @if (item.openWithdrawal) {
               <div class="mt-3 rounded-lg bg-warn-soft p-3 text-sm" style="color: var(--warn)">
                 <p class="font-semibold">
-                  Rückzug beantragt am {{ formatDate(submission.withdrawal.createdAt) }}
+                  Rückzug beantragt am {{ formatDate(item.openWithdrawal.createdAt) }}
                 </p>
                 <p class="mt-1">
-                  Das Abifilm-Team meldet sich bei dir. Bis dahin wird das Material nicht
+                  Das Abifilm-Team meldet sich bei dir. Bis dahin wird die Datei nicht
                   weiterverwendet.
                 </p>
-                @if (submission.withdrawal.reason) {
-                  <p class="mt-2 italic">„{{ submission.withdrawal.reason }}“</p>
-                }
+                <p class="mt-2 italic">{{ item.openWithdrawal.reason }}</p>
                 <button
                   type="button"
                   class="btn btn-ghost btn-sm mt-3"
-                  [disabled]="busy() === submission.id"
-                  (click)="cancelRequest(submission)"
+                  [disabled]="busy() === item.id"
+                  (click)="cancelRequest(item)"
                 >
                   Antrag zurücknehmen
                 </button>
               </div>
-            } @else if (requesting() === submission.id) {
+            } @else if (requesting() === item.id) {
               <form
                 class="mt-3 rounded-lg border border-line p-3"
-                (submit)="submitRequest($event, submission)"
+                (submit)="submitRequest($event, item)"
               >
-                <label [attr.for]="'reason-' + submission.id" class="field-label">
-                  Warum möchtest du den Beitrag zurückziehen?
+                <label [attr.for]="'reason-' + item.id" class="field-label">
+                  Warum möchtest du die Datei zurückziehen?
                 </label>
                 <textarea
-                  [attr.id]="'reason-' + submission.id"
+                  [attr.id]="'reason-' + item.id"
                   class="field-input"
                   rows="3"
                   required
-                  placeholder="z. B. „Eine Person auf dem Video möchte nicht im Film vorkommen.“"
                   [value]="reason()"
                   (input)="reason.set(readValue($event))"
                 ></textarea>
                 <p class="mt-1.5 text-xs text-muted">
-                  Der Beitrag wird nicht sofort gelöscht. Das Team nimmt Kontakt auf und
-                  entfernt das Material dann — der Film ist unter Umständen schon darum
-                  herum geschnitten.
+                  Die Datei wird nicht sofort gelöscht. Das Team nimmt Kontakt auf und
+                  entfernt sie dann — der Film ist unter Umständen schon darum herum
+                  geschnitten.
                 </p>
                 <div class="mt-3 flex flex-wrap gap-2">
                   <button
                     type="submit"
                     class="btn btn-primary btn-sm"
-                    [disabled]="busy() === submission.id || reason().trim().length < 3"
+                    [disabled]="busy() === item.id || reason().trim().length < 3"
                   >
-                    {{ busy() === submission.id ? 'Wird gesendet…' : 'Antrag stellen' }}
+                    {{ busy() === item.id ? 'Wird gesendet…' : 'Antrag stellen' }}
                   </button>
                   <button type="button" class="btn btn-ghost btn-sm" (click)="closeRequest()">
                     Abbrechen
@@ -148,36 +152,31 @@ import { formatBytes } from '../../core/upload/file-validation';
                 </div>
               </form>
             }
-
-            <ul class="mt-3 flex flex-wrap gap-2 border-t border-line pt-3 text-xs">
-              @for (asset of submission.assets; track asset.storagePath) {
-                <li class="rounded bg-surface px-2 py-1 text-muted">
-                  {{ asset.originalFilename }} · {{ bytes(asset.sizeBytes) }}
-                </li>
-              }
-            </ul>
           </li>
         }
       </ul>
 
+      @if (openError()) {
+        <p class="field-error mt-4" role="alert">
+          <span aria-hidden="true">⚠</span><span>{{ openError() }}</span>
+        </p>
+      }
+
       <div class="card mt-8 p-5 text-sm text-muted">
-        <h2 class="mb-2 font-bold text-ink">Warum sehe ich hier keine Vorschaubilder?</h2>
+        <h2 class="mb-2 font-bold text-ink">Warum öffnet sich die Datei in einem neuen Tab?</h2>
         <p class="mb-3">
-          Deine Dateien liegen bewusst nicht öffentlich abrufbar im Netz — nur das
-          Abifilm-Team kann sie öffnen. Deshalb siehst du hier die Dateinamen statt der
-          Bilder.
+          Deine Dateien liegen nicht öffentlich im Netz. „Ansehen“ holt eine Adresse, die nur
+          für dich und nur für kurze Zeit gilt — danach läuft sie ab.
         </p>
         <h2 class="mb-2 font-bold text-ink">Und warum kann ich nicht direkt löschen?</h2>
         <p>
-          Weil der Film zum Zeitpunkt deiner Anfrage schon um eine Aufnahme herum
-          geschnitten sein kann. Ein Antrag stellt sicher, dass das Team es mitbekommt und
-          mit dir bespricht. <strong class="text-ink">Ablehnen kann es den Rückzug nicht</strong> —
-          deine Einwilligung darfst du jederzeit zurückziehen. Bei Problemen erreichst du
-          uns unter
+          Weil der Film zum Zeitpunkt deiner Anfrage schon um eine Aufnahme herum geschnitten
+          sein kann. Ein Antrag stellt sicher, dass das Team es mitbekommt und mit dir
+          bespricht. <strong class="text-ink">Ablehnen kann es den Rückzug nicht</strong> —
+          deine Einwilligung darfst du jederzeit zurückziehen. Bei Problemen:
           <a [href]="'mailto:' + contact.email" class="font-semibold text-primary-ink underline">{{
             contact.email
-          }}</a
-          >.
+          }}</a>
         </p>
       </div>
     }
@@ -185,33 +184,23 @@ import { formatBytes } from '../../core/upload/file-validation';
 })
 export class MySubmissions implements OnInit {
   protected readonly session = inject(SessionService);
-  private readonly gateway = inject(SubmissionGateway);
+  private readonly gateway = inject(MediaGateway);
 
   protected readonly statusHints = REVIEW_STATUS_HINTS;
   protected readonly contact = CONTACT;
   protected readonly gradeLabel = gradeLabel;
 
-  protected readonly submissions = signal<Submission[]>([]);
+  protected readonly items = signal<MediaItem[]>([]);
   protected readonly loading = signal(true);
   protected readonly loadError = signal(false);
+  protected readonly openError = signal<string | null>(null);
 
-  /** Submission whose request form is open. */
   protected readonly requesting = signal<string | null>(null);
   protected readonly reason = signal('');
-  /** Submission currently being written to, to disable its buttons. */
   protected readonly busy = signal<string | null>(null);
 
-  protected readonly assetCount = computed(() =>
-    this.submissions().reduce((sum, entry) => sum + entry.assets.length, 0),
-  );
-
   protected readonly totalSizeLabel = computed(() =>
-    formatBytes(
-      this.submissions().reduce(
-        (sum, entry) => sum + entry.assets.reduce((inner, a) => inner + a.sizeBytes, 0),
-        0,
-      ),
-    ),
+    formatBytes(this.items().reduce((sum, item) => sum + item.fileSize, 0)),
   );
 
   ngOnInit(): void {
@@ -225,7 +214,7 @@ export class MySubmissions implements OnInit {
     this.loading.set(true);
     this.loadError.set(false);
     try {
-      this.submissions.set(await this.gateway.listMine(account.id));
+      this.items.set(await this.gateway.listMine(account.id));
     } catch {
       this.loadError.set(true);
     } finally {
@@ -233,9 +222,27 @@ export class MySubmissions implements OnInit {
     }
   }
 
-  protected openRequest(submissionId: string): void {
+  /**
+   * Fetch a short-lived link and open it.
+   *
+   * The URL is deliberately never stored: it expires, and keeping it around
+   * would turn a temporary permission into a lasting one.
+   */
+  protected async open(item: MediaItem): Promise<void> {
+    this.openError.set(null);
+    this.busy.set(item.id);
+    try {
+      window.open(await this.gateway.signedUrl(item.id), '_blank', 'noopener');
+    } catch {
+      this.openError.set('Die Datei konnte nicht geöffnet werden.');
+    } finally {
+      this.busy.set(null);
+    }
+  }
+
+  protected openRequest(id: string): void {
     this.reason.set('');
-    this.requesting.set(submissionId);
+    this.requesting.set(id);
   }
 
   protected closeRequest(): void {
@@ -247,16 +254,16 @@ export class MySubmissions implements OnInit {
     return (event.target as HTMLTextAreaElement).value;
   }
 
-  protected async submitRequest(event: Event, submission: Submission): Promise<void> {
+  protected async submitRequest(event: Event, item: MediaItem): Promise<void> {
     event.preventDefault();
 
     const account = this.session.account();
     const reason = this.reason().trim();
     if (!account || reason.length < 3) return;
 
-    this.busy.set(submission.id);
+    this.busy.set(item.id);
     try {
-      await this.gateway.requestWithdrawal(submission.id, account.id, reason);
+      await this.gateway.requestWithdrawal(item.id, account.id, reason);
       this.closeRequest();
       await this.reload();
     } catch {
@@ -266,12 +273,12 @@ export class MySubmissions implements OnInit {
     }
   }
 
-  protected async cancelRequest(submission: Submission): Promise<void> {
+  protected async cancelRequest(item: MediaItem): Promise<void> {
     const account = this.session.account();
-    const request = submission.withdrawal;
+    const request = item.openWithdrawal;
     if (!account || !request) return;
 
-    this.busy.set(submission.id);
+    this.busy.set(item.id);
     try {
       await this.gateway.cancelWithdrawal(request.id, account.id);
       await this.reload();
@@ -280,10 +287,6 @@ export class MySubmissions implements OnInit {
     } finally {
       this.busy.set(null);
     }
-  }
-
-  protected sizeOf(submission: Submission): string {
-    return formatBytes(submission.assets.reduce((sum, asset) => sum + asset.sizeBytes, 0));
   }
 
   protected bytes(value: number): string {

@@ -1,7 +1,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import { SignJWT, jwtVerify } from 'jose';
-import { collections, consumeQuota, db, nowIso, type AccountDoc } from './db.js';
+import { collections, consumeQuota, db, nowIso, type UserDoc } from './db.js';
 import { env } from './env.js';
 
 const scryptAsync = promisify(scrypt) as (
@@ -122,14 +122,14 @@ export async function signIn(rawCode: string, ip: string): Promise<SignInOutcome
 
   // The stored hint narrows the candidate set without revealing anything, so
   // we verify a handful of hashes instead of every account in the year group.
-  const candidates = await collections.accounts
+  const candidates = await collections.users
     .where('codeHint', '==', code.slice(0, 4))
     .where('revoked', '==', false)
     .get();
 
   for (const doc of candidates.docs) {
-    const account = doc.data() as AccountDoc;
-    if (!(await verifyCode(code, account.codeHash))) continue;
+    const user = doc.data() as UserDoc;
+    if (!(await verifyCode(code, user.codeHash))) continue;
 
     // Best effort, deliberately not awaited into the response path.
     void doc.ref.set({ lastSeenAt: nowIso() }, { merge: true }).catch(() => undefined);
@@ -138,8 +138,8 @@ export async function signIn(rawCode: string, ip: string): Promise<SignInOutcome
       ok: true,
       session: {
         accountId: doc.id,
-        displayName: account.displayName,
-        schoolClass: account.schoolClass,
+        displayName: user.username,
+        schoolClass: user.schoolClass,
       },
     };
   }

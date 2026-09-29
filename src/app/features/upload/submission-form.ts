@@ -3,7 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { Account } from '../../core/account/account';
 import { CATEGORIES, GRADES, gradeLabel } from '../../core/config';
-import { SubmissionMetadata } from '../../core/models';
+import { MediaMetadata } from '../../core/models';
 
 @Component({
   selector: 'app-submission-form',
@@ -151,7 +151,7 @@ export class SubmissionForm {
   readonly pendingCount = input.required<number>();
   readonly saving = input(false);
 
-  readonly submitted = output<SubmissionMetadata>();
+  readonly submitted = output<MediaMetadata>();
 
   protected readonly categories = CATEGORIES;
   protected readonly grades = GRADES;
@@ -208,6 +208,6 @@ export class SubmissionForm {
       return;
     }
 
-    this.submitted.emit(this.form.getRawValue() as SubmissionMetadata);
+    this.submitted.emit(this.form.getRawValue() as MediaMetadata);
   }
 }

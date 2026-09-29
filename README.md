@@ -48,12 +48,12 @@ src/app/
   core/
     config.ts                  Limits, Kategorien, Fristen, Kontakt — einzige Quelle
     runtime-config.ts          Deploy-Konfiguration aus index.html, Demo-Modus-Flag
-    models.ts                  Submission, AssetRef, Rückzugsanträge
+    models.ts                  MediaItem, Rückzugsanträge, Review-Status
     account/
       account.ts               Kontomodell, Code-Format, Code-Generator
       session.service.ts       Anmeldung per Code, Session, sessionGuard
     auth/                      Team-Authentifizierung + Route-Guard
-    submissions/               SubmissionGateway (HTTP | localStorage)
+    media/                     MediaGateway (HTTP | localStorage)
     upload/
       upload-target.ts         Transport-Abstraktion
       gcs-upload-target.ts     GCS-Resumable über fetch + XHR, ohne Fremd-Client
@@ -129,10 +129,10 @@ Dass jemand nur die **eigenen** Beiträge sieht, entscheidet die API anhand der
 Konto-ID aus dem signierten Session-Token — nie anhand einer ID aus dem Request.
 Eine mitgeschickte Konto-ID würde sonst reichen, um fremde Uploads zu lesen.
 
-## Rückzug von Beiträgen
+## Rückzug von Dateien
 
-Hochgeladenes Material löscht sich **nicht** auf Knopfdruck. Wer einen Beitrag
-entfernen möchte, stellt unter „Meine Beiträge“ einen Antrag; das Team bearbeitet
+Hochgeladenes Material löscht sich **nicht** auf Knopfdruck. Wer eine Datei
+entfernen möchte, stellt unter „Meine Dateien“ einen Antrag; das Team bearbeitet
 ihn unter `/team/rueckzuege`. Grund: der Film kann zu diesem Zeitpunkt schon um
 eine Aufnahme herum geschnitten sein.
 
@@ -147,11 +147,11 @@ er entscheidet nicht über sie. Deshalb gibt es bewusst **keinen Status
 | `erledigt` | Team hat das Material gelöscht. |
 | `zurueckgenommen` | Die Person hat den Antrag selbst zurückgenommen. |
 
-Durchgesetzt wird das in Firestore-Transaktionen im Backend: `PATCH /submissions/:id`
+Durchgesetzt wird das in Firestore-Transaktionen im Backend: `PATCH /admin/media/:id`
 verweigert `verwendet`, solange ein Antrag offen ist, und das Feld
-`submission.openWithdrawal` sorgt dafür, dass pro Beitrag nur **ein** Antrag offen
-sein kann. Beim Abschluss mit `erledigt` werden auch die Storage-Objekte gelöscht,
-nicht nur der Datensatz.
+`media.openWithdrawal` sorgt dafür, dass pro Datei nur **ein** Antrag offen sein
+kann. Beim Abschluss mit `erledigt` wird auch das Storage-Objekt gelöscht, nicht
+nur der Datensatz.
 
 ## Warum der Upload so gebaut ist
 
@@ -172,8 +172,8 @@ Die vier Entscheidungen, die den Unterschied zwischen „funktioniert im Test“
    rendern, Chrome und Firefox nicht.
 
 Dateien laden sofort nach der Auswahl hoch, während das Formular noch ausgefüllt
-wird. Der Beitrag entsteht erst beim Absenden und referenziert die fertigen
-Objekte. Deshalb existieren Upload-Objekte zeitweise ohne Beitrag — und deshalb
+wird. Beim Absenden entsteht **ein Datensatz pro Datei**, jeder mit eigener
+Einwilligung. Deshalb existieren Upload-Objekte zeitweise ohne Beitrag — und deshalb
 braucht es den Cleanup-Job für verwaiste Objekte (siehe server/README.md).
 
 ## Deployment (Frontend, Cloudflare Workers)

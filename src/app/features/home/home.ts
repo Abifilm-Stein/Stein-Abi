@@ -2,7 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { SessionService } from '../../core/account/session.service';
 import { ABI_YEAR, SCHOOL_NAME, SUBMISSION_DEADLINE } from '../../core/config';
-import { SubmissionGateway } from '../../core/submissions/submission-gateway';
+import { MediaGateway } from '../../core/media/media-gateway';
 
 const WANTED = [
   {
@@ -102,7 +102,7 @@ const WANTED = [
   `,
 })
 export class Home implements OnInit {
-  private readonly gateway = inject(SubmissionGateway);
+  private readonly gateway = inject(MediaGateway);
   protected readonly session = inject(SessionService);
 
   protected readonly abiYear = ABI_YEAR;

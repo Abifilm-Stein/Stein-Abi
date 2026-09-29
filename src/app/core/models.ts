@@ -9,7 +9,7 @@ export const REVIEW_STATUS_LABELS: Record<ReviewStatus, string> = {
   aussortiert: 'Aussortiert',
 };
 
-/** What the team is allowed to say publicly about a status, to the uploader. */
+/** What the team may say about a status towards the person who uploaded. */
 export const REVIEW_STATUS_HINTS: Record<ReviewStatus, string> = {
   neu: 'Noch nicht angesehen',
   gesichtet: 'Vom Team angesehen',
@@ -17,22 +17,17 @@ export const REVIEW_STATUS_HINTS: Record<ReviewStatus, string> = {
   aussortiert: 'Passt nicht in den Film',
 };
 
-export interface AssetRef {
-  storagePath: string;
-  originalFilename: string;
-  mimeType: string;
-  sizeBytes: number;
-}
+export type MediaType = 'image' | 'video';
 
 /**
- * The fields the upload form actually collects.
+ * The metadata the upload form collects.
  *
- * There is deliberately no "may this be used beyond the film" flag: the
- * material is collected for the Abifilm only. Not asking is stronger than
- * asking and defaulting to no -- there is no field anyone could later
- * reinterpret as permission for the Abizeitung or social media.
+ * Applies to every file of one upload batch: the form is filled once, and
+ * each file gets its own record carrying a copy. One document per file means
+ * every object holds its own consent record, which is what makes a single
+ * file withdrawable on its own.
  */
-export interface SubmissionMetadata {
+export interface MediaMetadata {
   category: Category;
   /** School year the material is from -- see GRADES in `config.ts`. */
   grade: Grade;
@@ -41,68 +36,61 @@ export interface SubmissionMetadata {
   consentPrivacy: boolean;
 }
 
-export interface SubmissionDraft extends SubmissionMetadata {
-  /** Owning account. Everything about "my uploads" hangs off this. */
-  accountId: string;
-  /**
-   * Copied from the account at submission time rather than joined on read:
-   * the team must still be able to tell who sent something even if the
-   * account is later removed.
-   */
-  uploaderName: string;
-  uploaderClass: string;
-  assets: AssetRef[];
+/** An open withdrawal request, mirrored onto the media item. */
+export interface OpenWithdrawal {
+  id: string;
+  reason: string;
+  createdAt: string;
 }
 
-export interface Submission extends SubmissionDraft {
+/** One uploaded file. */
+export interface MediaItem extends MediaMetadata {
   id: string;
+  userId: string;
+  type: MediaType;
+  title: string;
+  fileSize: number;
   createdAt: string;
+  likes: number;
+  uploaderName: string;
+  uploaderClass: string;
   /** Which version of the consent wording was actually agreed to. */
   consentVersion: string;
   reviewStatus: ReviewStatus;
-  /** Set while a withdrawal request exists for this submission. */
-  withdrawal?: WithdrawalSummary;
+  openWithdrawal?: OpenWithdrawal | null;
 }
 
-/* -------------------------------------------------------------------------
- * Withdrawal requests
- *
- * Uploads are not deleted on the spot: the film may already be cut around a
- * clip, so removing one is a conversation with the team rather than a button.
- *
- * IMPORTANT, and the reason there is no "rejected" state: withdrawing
- * consent under Art. 7(3) GDPR cannot be refused. This workflow exists to
- * coordinate the removal, never to decide whether it happens. A request
- * therefore ends either as `erledigt` (the material was deleted) or as
- * `zurueckgenommen` -- and only the person who filed it may take it back.
- * From the moment a request exists the material counts as blocked and must
- * not be cut into the film.
- * ---------------------------------------------------------------------- */
+/** What the client sends to register a finished upload. */
+export interface MediaDraft extends MediaMetadata {
+  storagePath: string;
+  title: string;
+}
 
 export type WithdrawalStatus = 'offen' | 'erledigt' | 'zurueckgenommen';
 
 export const WITHDRAWAL_STATUS_LABELS: Record<WithdrawalStatus, string> = {
   offen: 'Offen',
-  erledigt: 'Erledigt, Material gelöscht',
+  erledigt: 'Erledigt, Datei gelöscht',
   zurueckgenommen: 'Von der Person zurückgenommen',
 };
 
-export interface WithdrawalSummary {
+/**
+ * A request to remove one file.
+ *
+ * There is deliberately no 'abgelehnt' status: withdrawing consent under
+ * Art. 7(3) GDPR cannot be refused, so this workflow coordinates the removal
+ * rather than deciding whether it happens.
+ */
+export interface WithdrawalRequest {
   id: string;
-  status: WithdrawalStatus;
-  reason: string;
-  createdAt: string;
-}
-
-export interface WithdrawalRequest extends WithdrawalSummary {
-  submissionId: string;
-  accountId: string;
-  /** Denormalised so the team sees who asked without a second lookup. */
+  mediaId: string;
+  userId: string;
   uploaderName: string;
   uploaderClass: string;
-  /** How many files the request concerns, for the team overview. */
-  assetCount: number;
+  title: string;
+  reason: string;
+  status: WithdrawalStatus;
+  createdAt: string;
   resolvedAt?: string;
-  /** What the team noted when closing it. */
   resolutionNote?: string;
 }

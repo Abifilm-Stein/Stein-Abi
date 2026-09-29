@@ -1,8 +1,8 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { SessionService } from '../../core/account/session.service';
-import { SubmissionMetadata } from '../../core/models';
-import { SubmissionGateway } from '../../core/submissions/submission-gateway';
+import { MediaMetadata } from '../../core/models';
+import { MediaGateway } from '../../core/media/media-gateway';
 import { formatBytes } from '../../core/upload/file-validation';
 import { UploadQueue } from '../../core/upload/upload-queue';
 import { DropZone } from './drop-zone';
@@ -149,12 +149,14 @@ import { UploadRow } from './upload-row';
 export class UploadPage implements OnInit {
   protected readonly session = inject(SessionService);
   protected readonly queue = inject(UploadQueue);
-  private readonly gateway = inject(SubmissionGateway);
+  private readonly gateway = inject(MediaGateway);
   private readonly router = inject(Router);
 
   protected readonly rejections = signal<{ name: string; reason: string }[]>([]);
   protected readonly saving = signal(false);
   protected readonly saveError = signal<string | null>(null);
+  private readonly savedCount = signal(0);
+  private readonly failedCount = signal(0);
 
   protected readonly visibleItems = computed(() =>
     this.queue.items().filter((item) => item.status !== 'cancelled'),
@@ -191,7 +193,7 @@ export class UploadPage implements OnInit {
     this.rejections.set(result.rejected);
   }
 
-  protected async onSubmitted(metadata: SubmissionMetadata): Promise<void> {
+  protected async onSubmitted(metadata: MediaMetadata): Promise<void> {
     const account = this.session.account();
     if (!account) return;
 
@@ -199,19 +201,28 @@ export class UploadPage implements OnInit {
     this.saveError.set(null);
 
     try {
-      const assets = this.queue.completedAssets();
-      await this.gateway.create({
-        ...metadata,
-        assets,
-        accountId: account.id,
-        // Denormalised so the team can still attribute a submission even if
-        // the account is removed later.
-        uploaderName: account.displayName,
-        uploaderClass: account.schoolClass,
-      });
+      const uploads = this.queue.completedAssets();
+
+      // One record per file: each carries its own consent, which is what
+      // makes a single file withdrawable without touching the others.
+      const results = await Promise.allSettled(
+        uploads.map((upload) =>
+          this.gateway.create({
+            ...metadata,
+            storagePath: upload.storagePath,
+            title: upload.originalFilename,
+          }),
+        ),
+      );
+
+      const failed = results.filter((result) => result.status === 'rejected').length;
+      if (failed === results.length) throw new Error('none-registered');
+
+      this.savedCount.set(results.length - failed);
+      this.failedCount.set(failed);
       this.queue.reset();
       await this.router.navigate(['/upload/danke'], {
-        state: { fileCount: assets.length },
+        state: { fileCount: this.savedCount(), failed: this.failedCount() },
       });
     } catch {
       this.saveError.set(

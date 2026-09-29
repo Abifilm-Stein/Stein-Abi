@@ -3,23 +3,19 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { createMiddleware } from 'hono/factory';
 import { z } from 'zod';
-import {
-  collections,
-  consumeQuota,
-  db,
-  nowIso,
-  type OpenWithdrawal,
-  type SubmissionDoc,
-  type WithdrawalDoc,
-} from './db.js';
+import { collections, consumeQuota, db, nowIso, type WithdrawalDoc } from './db.js';
 import { env } from './env.js';
-import { hashIp, issueToken, readToken, signIn, type Session } from './session.js';
 import {
+  confirmUpload,
   createUploadSession,
-  deleteObjects,
+  deleteMedia,
+  listMediaByUser,
   MAX_VIDEO_BYTES,
-  verifyAssets,
-} from './uploads.js';
+  MediaError,
+  signedUrlFor,
+  type MediaDoc,
+} from './media.js';
+import { hashIp, issueToken, readToken, signIn, type Session } from './session.js';
 
 const CONSENT_VERSION = '2026-09-10';
 
@@ -40,7 +36,7 @@ app.use(
 app.get('/healthz', (c) => c.text('ok'));
 
 /* -------------------------------------------------------------------------
- * Helpers
+ * Access
  * ---------------------------------------------------------------------- */
 
 function callerIp(c: { req: { header: (name: string) => string | undefined } }): string {
@@ -52,7 +48,7 @@ function callerIp(c: { req: { header: (name: string) => string | undefined } }):
   return parts[parts.length - 1] || 'unknown';
 }
 
-/** Requires a student session. */
+/** Any signed-in student. */
 const requireSession = createMiddleware<{ Variables: Vars }>(async (c, next) => {
   const header = c.req.header('authorization') ?? '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
@@ -63,32 +59,35 @@ const requireSession = createMiddleware<{ Variables: Vars }>(async (c, next) => 
 });
 
 /**
- * Team routes.
+ * Film team.
  *
- * Deliberately NOT the same mechanism as the student session: team access is
- * granted by Google Cloud IAM in front of the service. Deploy the team paths
- * behind IAP or a separate Cloud Run service with `--no-allow-unauthenticated`
- * and let Google check identity. Rolling our own admin password here would be
- * the weakest link in the whole system.
+ * Deliberately NOT the same mechanism as the student session: team identity
+ * comes from Google Cloud IAM in front of the service (IAP, or a second
+ * service deployed with --no-allow-unauthenticated). Rolling our own admin
+ * password would be the weakest link in a system whose entire point is that
+ * only this group may see other people's files.
  */
 const requireTeam = createMiddleware<{ Variables: Vars }>(async (c, next) => {
-  const assertion = c.req.header('x-goog-authenticated-user-email');
-  if (!assertion) {
-    return c.json(
-      { error: 'Nur fuer das Abifilm-Team. Zugriff laeuft ueber Google-Anmeldung.' },
-      403,
-    );
+  if (!c.req.header('x-goog-authenticated-user-email')) {
+    return c.json({ error: 'Nur fuer das Abifilm-Team.' }, 403);
   }
   await next();
 });
+
+function mediaErrorStatus(code: string): 400 | 403 | 404 {
+  if (code === 'forbidden') return 403;
+  if (code === 'not-found') return 404;
+  return 400;
+}
 
 /* -------------------------------------------------------------------------
  * Session
  * ---------------------------------------------------------------------- */
 
 app.post('/session', async (c) => {
-  const body = await c.req.json().catch(() => null);
-  const parsed = z.object({ code: z.string().min(1).max(64) }).safeParse(body);
+  const parsed = z
+    .object({ code: z.string().min(1).max(64) })
+    .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Code fehlt.' }, 400);
 
   const outcome = await signIn(parsed.data.code, callerIp(c));
@@ -113,26 +112,23 @@ app.post('/session', async (c) => {
 });
 
 /* -------------------------------------------------------------------------
- * Uploads
+ * Upload
  * ---------------------------------------------------------------------- */
 
-app.post('/uploads', requireSession, async (c) => {
+app.post('/media/uploads', requireSession, async (c) => {
   const session = c.get('session');
-  const body = await c.req.json().catch(() => null);
   const parsed = z
     .object({
       filename: z.string().min(1).max(300),
       contentType: z.string().max(200).default(''),
       sizeBytes: z.number().int().positive().max(MAX_VIDEO_BYTES),
     })
-    .safeParse(body);
-
+    .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Ungueltige Angaben zur Datei.' }, 400);
 
   const ipKey = hashIp(callerIp(c));
   const allowed = await db.runTransaction(async (tx) => {
-    const files = await consumeQuota(tx, `files_${ipKey}`, env.uploadsPerHour);
-    if (!files) return false;
+    if (!(await consumeQuota(tx, `files_${ipKey}`, env.uploadsPerHour))) return false;
     return consumeQuota(tx, `bytes_${ipKey}`, env.uploadBytesPerHour, parsed.data.sizeBytes);
   });
   if (!allowed) {
@@ -140,135 +136,145 @@ app.post('/uploads', requireSession, async (c) => {
   }
 
   const origin = c.req.header('origin') ?? env.allowedOrigins[0]!;
-  const created = await createUploadSession({ ...parsed.data, accountId: session.accountId, origin });
-  return c.json(created);
+  return c.json(
+    await createUploadSession({ ...parsed.data, userId: session.accountId, origin }),
+  );
 });
 
-/* -------------------------------------------------------------------------
- * Submissions
- * ---------------------------------------------------------------------- */
-
-const submissionSchema = z.object({
-  category: z.string().min(1).max(80),
-  grade: z.enum(['5', '6', '7', '8', '9', '10', 'EF', 'Q1', 'Q2']),
-  description: z.string().max(2000).default(''),
-  consentPersons: z.literal(true),
-  consentPrivacy: z.literal(true),
-  assets: z
-    .array(
-      z.object({
-        storagePath: z.string().min(1).max(300),
-        originalFilename: z.string().max(300).default(''),
-      }),
-    )
-    .min(1)
-    .max(30),
-});
-
-app.post('/submissions', requireSession, async (c) => {
+app.post('/media', requireSession, async (c) => {
   const session = c.get('session');
-  const parsed = submissionSchema.safeParse(await c.req.json().catch(() => null));
+  const parsed = z
+    .object({
+      storagePath: z.string().min(1).max(300),
+      title: z.string().max(200).default(''),
+      description: z.string().max(2000).default(''),
+      category: z.string().min(1).max(80),
+      grade: z.enum(['5', '6', '7', '8', '9', '10', 'EF', 'Q1', 'Q2']),
+      consentPersons: z.literal(true),
+      consentPrivacy: z.literal(true),
+    })
+    .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) {
     return c.json({ error: 'Angaben unvollstaendig oder Einwilligung fehlt.' }, 400);
   }
 
-  // Magic-byte check against the stored objects. The client validation is UX
-  // only; this is where a disguised file is actually caught.
-  const { assets, failures } = await verifyAssets(parsed.data.assets, session.accountId);
-  if (assets.length === 0) {
-    return c.json({ error: 'Keine gueltige Datei gefunden.', failures }, 400);
+  try {
+    const { id, doc } = await confirmUpload({
+      userId: session.accountId,
+      uploaderName: session.displayName,
+      uploaderClass: session.schoolClass,
+      storagePath: parsed.data.storagePath,
+      title: parsed.data.title,
+      description: parsed.data.description,
+      category: parsed.data.category,
+      grade: parsed.data.grade,
+      consentVersion: CONSENT_VERSION,
+    });
+    return c.json({ id, ...doc }, 201);
+  } catch (error) {
+    if (error instanceof MediaError) {
+      return c.json({ error: error.message }, mediaErrorStatus(error.code));
+    }
+    throw error;
   }
-
-  const doc: SubmissionDoc = {
-    accountId: session.accountId,
-    uploaderName: session.displayName,
-    uploaderClass: session.schoolClass,
-    category: parsed.data.category,
-    grade: parsed.data.grade,
-    description: parsed.data.description,
-    consentPersons: true,
-    consentPrivacy: true,
-    consentVersion: CONSENT_VERSION,
-    reviewStatus: 'neu',
-    createdAt: nowIso(),
-    assets: assets.map(({ kind, ...asset }) => asset),
-    ipHash: hashIp(callerIp(c)),
-  };
-
-  const ref = await collections.submissions.add(doc);
-  return c.json({ id: ref.id, ...doc, failures }, 201);
 });
 
-app.get('/submissions/mine', requireSession, async (c) => {
+/* -------------------------------------------------------------------------
+ * Reading -- this is where "only your own" is enforced
+ * ---------------------------------------------------------------------- */
+
+app.get('/media/mine', requireSession, async (c) => {
   const session = c.get('session');
-  const snapshot = await collections.submissions
-    .where('accountId', '==', session.accountId)
-    .orderBy('createdAt', 'desc')
-    .get();
-
-  return c.json(snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as SubmissionDoc) })));
+  return c.json(await listMediaByUser(session.accountId));
 });
 
-app.get('/submissions/count', async (c) => {
-  const snapshot = await collections.submissions.count().get();
+app.get('/media/count', async (c) => {
+  const snapshot = await collections.media.count().get();
   return c.json({ count: snapshot.data().count });
+});
+
+/**
+ * Time-limited URL for one file.
+ *
+ * The ownership check is the load-bearing line here: without it, knowing a
+ * document id would be enough to view anybody's upload, and Firestore
+ * document ids are not secrets.
+ */
+app.get('/media/:id/url', requireSession, async (c) => {
+  const session = c.get('session');
+  const snapshot = await collections.media.doc(c.req.param('id')).get();
+
+  // Same answer for "does not exist" and "not yours", so the endpoint cannot
+  // be used to discover which ids exist.
+  if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);
+  const doc = snapshot.data() as MediaDoc;
+  if (doc.userId !== session.accountId) return c.json({ error: 'Nicht gefunden.' }, 404);
+
+  const path = doc.storageUrl.replace(`gs://${env.bucket}/`, '');
+  return c.json({ url: await signedUrlFor(path), expiresInMinutes: 15 });
+});
+
+app.delete('/media/:id', requireSession, async (c) => {
+  const session = c.get('session');
+  try {
+    await deleteMedia(c.req.param('id'), session.accountId);
+    return c.body(null, 204);
+  } catch (error) {
+    if (error instanceof MediaError) {
+      return c.json({ error: error.message }, mediaErrorStatus(error.code));
+    }
+    throw error;
+  }
 });
 
 /* -------------------------------------------------------------------------
  * Withdrawal requests
  * ---------------------------------------------------------------------- */
 
-app.post('/submissions/mine/:id/withdrawal', requireSession, async (c) => {
+app.post('/media/:id/withdrawal', requireSession, async (c) => {
   const session = c.get('session');
   const parsed = z
     .object({ reason: z.string().trim().min(3).max(2000) })
     .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Bitte gib eine Begruendung an.' }, 400);
 
-  const submissionRef = collections.submissions.doc(c.req.param('id'));
+  const mediaRef = collections.media.doc(c.req.param('id'));
   const requestRef = collections.withdrawals.doc();
 
   try {
     await db.runTransaction(async (tx) => {
-      const snapshot = await tx.get(submissionRef);
+      const snapshot = await tx.get(mediaRef);
       if (!snapshot.exists) throw new Error('not-found');
 
-      const submission = snapshot.data() as SubmissionDoc;
-      if (submission.accountId !== session.accountId) throw new Error('not-found');
-
-      // This is the uniqueness invariant Postgres used to give us with a
-      // partial unique index. Inside a transaction the read-then-write is
-      // atomic, so two taps cannot both create a request.
-      if (submission.openWithdrawal) throw new Error('already-open');
+      const doc = snapshot.data() as MediaDoc;
+      if (doc.userId !== session.accountId) throw new Error('not-found');
+      // Firestore has no partial unique index, so this read-then-write inside
+      // a transaction is what keeps it to one open request per file.
+      if (doc.openWithdrawal) throw new Error('already-open');
 
       const createdAt = nowIso();
-      const open: OpenWithdrawal = {
-        id: requestRef.id,
-        status: 'offen',
-        reason: parsed.data.reason,
-        createdAt,
-      };
-
       const request: WithdrawalDoc = {
-        submissionId: submissionRef.id,
-        accountId: session.accountId,
-        uploaderName: submission.uploaderName,
-        uploaderClass: submission.uploaderClass,
-        assetCount: submission.assets.length,
+        mediaId: mediaRef.id,
+        userId: session.accountId,
+        uploaderName: doc.uploaderName,
+        uploaderClass: doc.uploaderClass,
+        assetCount: 1,
         reason: parsed.data.reason,
         status: 'offen',
         createdAt,
       };
 
       tx.create(requestRef, request);
-      tx.update(submissionRef, { openWithdrawal: open });
+      tx.update(mediaRef, {
+        openWithdrawal: { id: requestRef.id, reason: parsed.data.reason, createdAt },
+      });
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : '';
     if (message === 'already-open') {
-      return c.json({ error: 'Fuer diesen Beitrag laeuft bereits ein Antrag.' }, 409);
+      return c.json({ error: 'Fuer diese Datei laeuft bereits ein Antrag.' }, 409);
     }
-    return c.json({ error: 'Beitrag nicht gefunden.' }, 404);
+    return c.json({ error: 'Nicht gefunden.' }, 404);
   }
 
   return c.json({ id: requestRef.id }, 201);
@@ -284,13 +290,11 @@ app.delete('/withdrawals/mine/:id', requireSession, async (c) => {
       if (!snapshot.exists) throw new Error('not-found');
 
       const request = snapshot.data() as WithdrawalDoc;
-      if (request.accountId !== session.accountId) throw new Error('not-found');
-      // Only an open request can be taken back, and only by its author. This
-      // replaces the RLS policy that allowed exactly offen -> zurueckgenommen.
+      if (request.userId !== session.accountId) throw new Error('not-found');
       if (request.status !== 'offen') throw new Error('not-open');
 
       tx.update(requestRef, { status: 'zurueckgenommen', resolvedAt: nowIso() });
-      tx.update(collections.submissions.doc(request.submissionId), { openWithdrawal: null });
+      tx.update(collections.media.doc(request.mediaId), { openWithdrawal: null });
     });
   } catch {
     return c.json({ error: 'Antrag nicht gefunden.' }, 404);
@@ -303,28 +307,37 @@ app.delete('/withdrawals/mine/:id', requireSession, async (c) => {
  * Team
  * ---------------------------------------------------------------------- */
 
-app.get('/submissions', requireTeam, async (c) => {
-  const snapshot = await collections.submissions.orderBy('createdAt', 'desc').get();
-  return c.json(snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as SubmissionDoc) })));
+app.get('/admin/media', requireTeam, async (c) => {
+  const snapshot = await collections.media.orderBy('createdAt', 'desc').limit(1000).get();
+  return c.json(snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as MediaDoc) })));
 });
 
-app.patch('/submissions/:id', requireTeam, async (c) => {
+/** Same as the student endpoint, but without the ownership restriction. */
+app.get('/admin/media/:id/url', requireTeam, async (c) => {
+  const snapshot = await collections.media.doc(c.req.param('id')).get();
+  if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);
+
+  const doc = snapshot.data() as MediaDoc;
+  const path = doc.storageUrl.replace(`gs://${env.bucket}/`, '');
+  return c.json({ url: await signedUrlFor(path, 60), expiresInMinutes: 60 });
+});
+
+app.patch('/admin/media/:id', requireTeam, async (c) => {
   const parsed = z
     .object({ reviewStatus: z.enum(['neu', 'gesichtet', 'verwendet', 'aussortiert']) })
     .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Ungueltiger Status.' }, 400);
 
-  const ref = collections.submissions.doc(c.req.param('id'));
+  const ref = collections.media.doc(c.req.param('id'));
 
   try {
     await db.runTransaction(async (tx) => {
       const snapshot = await tx.get(ref);
       if (!snapshot.exists) throw new Error('not-found');
 
-      const submission = snapshot.data() as SubmissionDoc;
-      // Replaces the Postgres trigger: material with an open withdrawal
-      // request must not be marked as used in the film.
-      if (parsed.data.reviewStatus === 'verwendet' && submission.openWithdrawal) {
+      const doc = snapshot.data() as MediaDoc;
+      // Material with an open withdrawal request must not be marked as used.
+      if (parsed.data.reviewStatus === 'verwendet' && doc.openWithdrawal) {
         throw new Error('withdrawal-open');
       }
       tx.update(ref, { reviewStatus: parsed.data.reviewStatus });
@@ -333,38 +346,23 @@ app.patch('/submissions/:id', requireTeam, async (c) => {
     const message = error instanceof Error ? error.message : '';
     if (message === 'withdrawal-open') {
       return c.json(
-        { error: 'Beitrag hat einen offenen Rueckzugsantrag und darf nicht verwendet werden.' },
+        { error: 'Datei hat einen offenen Rueckzugsantrag und darf nicht verwendet werden.' },
         409,
       );
     }
-    return c.json({ error: 'Beitrag nicht gefunden.' }, 404);
+    return c.json({ error: 'Nicht gefunden.' }, 404);
   }
 
   return c.body(null, 204);
 });
 
-app.delete('/submissions/:id', requireTeam, async (c) => {
-  const ref = collections.submissions.doc(c.req.param('id'));
-  const snapshot = await ref.get();
-  if (!snapshot.exists) return c.json({ error: 'Beitrag nicht gefunden.' }, 404);
-
-  const submission = snapshot.data() as SubmissionDoc;
-  // Files first: a dangling object outlives its consent record, which is
-  // exactly what must not happen. A dangling record is merely untidy.
-  await deleteObjects(submission.assets.map((asset) => asset.storagePath));
-  await ref.delete();
-
-  return c.body(null, 204);
-});
-
-app.get('/withdrawals', requireTeam, async (c) => {
+app.get('/admin/withdrawals', requireTeam, async (c) => {
   const snapshot = await collections.withdrawals.orderBy('createdAt', 'desc').get();
   const requests = snapshot.docs.map((doc) => ({
     id: doc.id,
     ...(doc.data() as WithdrawalDoc),
   }));
 
-  // Open ones first, newest within each group.
   requests.sort((a, b) => {
     if (a.status !== b.status) return a.status === 'offen' ? -1 : 1;
     return b.createdAt.localeCompare(a.createdAt);
@@ -373,7 +371,7 @@ app.get('/withdrawals', requireTeam, async (c) => {
   return c.json(requests);
 });
 
-app.patch('/withdrawals/:id', requireTeam, async (c) => {
+app.patch('/admin/withdrawals/:id', requireTeam, async (c) => {
   const parsed = z
     .object({
       // No 'abgelehnt': withdrawing consent under Art. 7(3) GDPR cannot be
@@ -389,17 +387,15 @@ app.patch('/withdrawals/:id', requireTeam, async (c) => {
   if (!snapshot.exists) return c.json({ error: 'Antrag nicht gefunden.' }, 404);
 
   const request = snapshot.data() as WithdrawalDoc;
-  const submissionRef = collections.submissions.doc(request.submissionId);
 
   if (parsed.data.status === 'erledigt') {
-    const submission = await submissionRef.get();
-    if (submission.exists) {
-      const data = submission.data() as SubmissionDoc;
-      await deleteObjects(data.assets.map((asset) => asset.storagePath));
-      await submissionRef.delete();
-    }
+    // Deletes the stored object as well, not just the record.
+    await deleteMedia(request.mediaId, request.userId).catch(() => undefined);
   } else {
-    await submissionRef.update({ openWithdrawal: null }).catch(() => undefined);
+    await collections.media
+      .doc(request.mediaId)
+      .update({ openWithdrawal: null })
+      .catch(() => undefined);
   }
 
   await requestRef.update({

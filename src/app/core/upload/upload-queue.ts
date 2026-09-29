@@ -4,7 +4,6 @@ import {
   MAX_FILES_PER_SUBMISSION,
   MAX_UPLOAD_RETRIES,
 } from '../config';
-import { AssetRef } from '../models';
 import { detectKind, FileKind, isProbablyUndisplayable, validateFile } from './file-validation';
 import * as store from './queue-store';
 import {
@@ -34,6 +33,14 @@ export interface UploadItem {
   storagePath?: string;
   /** True when the item came back from IndexedDB after a reload. */
   restored: boolean;
+}
+
+/** One finished upload, ready to be registered as a media record. */
+export interface CompletedUpload {
+  storagePath: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
 }
 
 export interface AddResult {
@@ -115,8 +122,8 @@ export class UploadQueue {
     return left <= 0 ? 0 : Math.round(left / rate);
   });
 
-  /** Asset references for the submission record, once transfers finished. */
-  readonly completedAssets = computed<AssetRef[]>(() =>
+  /** Finished transfers, ready to be confirmed against the API. */
+  readonly completedAssets = computed<CompletedUpload[]>(() =>
     this.completed()
       .filter((item) => !!item.storagePath)
       .map((item) => ({

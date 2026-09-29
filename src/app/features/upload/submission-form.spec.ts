@@ -2,14 +2,14 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormGroup } from '@angular/forms';
 import { provideRouter } from '@angular/router';
 import { Account } from '../../core/account/account';
-import { SubmissionMetadata } from '../../core/models';
+import { MediaMetadata } from '../../core/models';
 import { SubmissionForm } from './submission-form';
 
 const ACCOUNT: Account = { id: 'acc-1', displayName: 'Mia Beispiel', schoolClass: 'Q2' };
 
 describe('SubmissionForm', () => {
   let fixture: ComponentFixture<SubmissionForm>;
-  let emitted: SubmissionMetadata[];
+  let emitted: MediaMetadata[];
 
   /** The form is `protected`; reaching it keeps these tests readable. */
   const formOf = (component: SubmissionForm): FormGroup =>

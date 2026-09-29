@@ -25,64 +25,36 @@ export const db = new Firestore({
 });
 
 export const collections = {
-  accounts: db.collection('accounts'),
-  submissions: db.collection('submissions'),
+  /** One document per person. Carries the login code hash alongside the
+   * profile fields, so there is one user collection rather than two. */
+  users: db.collection('users'),
+  /** One document per uploaded file. */
+  media: db.collection('media'),
   withdrawals: db.collection('withdrawalRequests'),
   rateLimits: db.collection('rateLimits'),
 } as const;
 
-export interface AccountDoc {
-  displayName: string;
+export interface UserDoc {
+  username: string;
+  email: string;
+  profileImageUrl: string;
+  createdAt: FirebaseFirestore.Timestamp | string;
+
+  /* Login by personal code. */
   schoolClass: string;
-  /** Argon2id hash of the canonical code. The code itself is never stored. */
+  /** scrypt hash of the canonical code. The code itself is never stored. */
   codeHash: string;
   /** First four characters, so the team can tell two printed slips apart. */
   codeHint: string;
   revoked: boolean;
-  createdAt: string;
   lastSeenAt?: string;
 }
 
-export interface AssetDoc {
-  storagePath: string;
-  originalFilename: string;
-  mimeType: string;
-  sizeBytes: number;
-}
-
-export type ReviewStatus = 'neu' | 'gesichtet' | 'verwendet' | 'aussortiert';
 export type WithdrawalStatus = 'offen' | 'erledigt' | 'zurueckgenommen';
 
-/** Mirrored onto the submission so uniqueness is checkable in a transaction. */
-export interface OpenWithdrawal {
-  id: string;
-  status: 'offen';
-  reason: string;
-  createdAt: string;
-}
-
-export interface SubmissionDoc {
-  accountId: string;
-  uploaderName: string;
-  uploaderClass: string;
-  category: string;
-  grade: string;
-  description: string;
-  consentPersons: boolean;
-  consentPrivacy: boolean;
-  consentVersion: string;
-  reviewStatus: ReviewStatus;
-  createdAt: string;
-  assets: AssetDoc[];
-  /** Absent unless a request is open. Presence IS the uniqueness constraint. */
-  openWithdrawal?: OpenWithdrawal | null;
-  /** Salted, truncated hash. Enough for abuse handling, not to identify anyone. */
-  ipHash?: string;
-}
-
 export interface WithdrawalDoc {
-  submissionId: string;
-  accountId: string;
+  mediaId: string;
+  userId: string;
   uploaderName: string;
   uploaderClass: string;
   assetCount: number;
