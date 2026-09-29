@@ -13,7 +13,7 @@ import {
   SubmissionGateway,
 } from './core/submissions/submission-gateway';
 import { MockUploadTarget } from './core/upload/mock-upload-target';
-import { TusUploadTarget } from './core/upload/tus-upload-target';
+import { GcsUploadTarget } from './core/upload/gcs-upload-target';
 import { UploadTarget } from './core/upload/upload-target';
 
 export const appConfig: ApplicationConfig = {
@@ -28,7 +28,7 @@ export const appConfig: ApplicationConfig = {
 
     // Backend bindings. Without a configured endpoint the app runs fully
     // self-contained so the flow can be reviewed before infrastructure exists.
-    { provide: UploadTarget, useClass: isDemoMode ? MockUploadTarget : TusUploadTarget },
+    { provide: UploadTarget, useClass: isDemoMode ? MockUploadTarget : GcsUploadTarget },
     {
       provide: SubmissionGateway,
       useClass: isDemoMode ? LocalSubmissionGateway : HttpSubmissionGateway,

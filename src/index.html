@@ -17,12 +17,12 @@
   <!--
     Runtime configuration. Overwritten at deploy time (or by a hosting
     provider's env-substitution step) so the same build works per environment.
-    While both values are empty the app runs in DEMO MODE: uploads are
-    simulated and nothing leaves the browser.
+    While apiBaseUrl is empty the app runs in DEMO MODE: uploads are
+    simulated and nothing leaves the browser. Upload sessions are minted by
+    the API, so this one value is all that is needed.
   -->
   <script>
     window.__STEINABI__ = {
-      uploadEndpoint: '',
       apiBaseUrl: '',
     };
   </script>

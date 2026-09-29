@@ -2,7 +2,7 @@
 
 Website, über die Schülerinnen und Schüler Fotos und Videos für den Abifilm des
 Freiherr-vom-Stein-Gymnasiums hochladen. Angular 22 (standalone, Signals, zoneless) +
-Tailwind CSS 4, Tests mit Vitest.
+Tailwind CSS 4, Tests mit Vitest. Backend in [server/](server/).
 
 Das Logo liegt als Inline-SVG in [src/app/shared/logo.ts](src/app/shared/logo.ts)
 (sechs Rechtecke, aus der Vorlage nachgebaut) und als Tab-Icon in
@@ -23,8 +23,8 @@ npm run build # Produktionsbuild
 
 ## Demo-Modus
 
-Solange in [src/index.html](src/index.html) keine `uploadEndpoint` und `apiBaseUrl`
-gesetzt sind, läuft die App **vollständig ohne Backend**:
+Solange `apiBaseUrl` in [src/index.html](src/index.html) leer ist, läuft die App
+**vollständig ohne Backend**:
 
 | Bereich | Verhalten im Demo-Modus |
 |---|---|
@@ -48,7 +48,7 @@ src/app/
   core/
     config.ts                  Limits, Kategorien, Fristen, Kontakt — einzige Quelle
     runtime-config.ts          Deploy-Konfiguration aus index.html, Demo-Modus-Flag
-    models.ts                  Submission, AssetRef, ReviewStatus
+    models.ts                  Submission, AssetRef, Rückzugsanträge
     account/
       account.ts               Kontomodell, Code-Format, Code-Generator
       session.service.ts       Anmeldung per Code, Session, sessionGuard
@@ -56,27 +56,50 @@ src/app/
     submissions/               SubmissionGateway (HTTP | localStorage)
     upload/
       upload-target.ts         Transport-Abstraktion
-      tus-upload-target.ts     tus 1.0.0 über fetch + XHR, ohne Fremd-Client
+      gcs-upload-target.ts     GCS-Resumable über fetch + XHR, ohne Fremd-Client
       mock-upload-target.ts    Simulation für den Demo-Modus
       upload-queue.ts          Warteschlange, Nebenläufigkeit, Retry, Pause/Resume
       queue-store.ts           IndexedDB-Persistenz der Warteschlange
       file-validation.ts       Größen- und Typprüfung, HEIC-Erkennung
   features/
     home/ auth/ upload/ mine/ legal/ team/ not-found/
-supabase/migrations/
-  0001_init.sql                Schema inkl. Row Level Security
-  0002_accounts.sql            Vorgenerierte Konten, Zugriff auf eigene Beiträge
-  0003_drop_extended_usage.sql Nutzung außerhalb des Films entfernt
-  0004_grade_instead_of_date.sql Stufe statt Aufnahmedatum
-  0005_withdrawal_requests.sql Rückzugsanträge inkl. Sperr-Trigger
+firestore.rules                Client-Zugriff auf Firestore: alles verweigert
+server/                        Cloud-Run-Backend (eigenes README)
 ```
+
+## Backend
+
+Hono auf **Cloud Run**, **Firestore** als Datenbank, **Google Cloud Storage** für
+die Dateien. Einrichtung, Endpunkte und Deploy-Befehle: [server/README.md](server/README.md).
+
+Die vier Entscheidungen, die dort zählen:
+
+- **Cloud Run in derselben Region wie Firestore.** Der Weg zur Datenbank ist der
+  Latenzfaktor, nicht der Code. Mit `--min-instances=1` deployen, sonst kostet
+  der erste Request nach einer Pause 1–3 Sekunden.
+- **Uploads gehen direkt zu GCS.** Der Server stellt nur eine Resumable-Session
+  aus; die Bytes passieren Cloud Run nie. Nur so sind 2-GB-Videos im Free Tier
+  möglich.
+- **Der Browser spricht nie mit Firestore.** `firestore.rules` verweigert jeden
+  Client-Zugriff, damit Autorisierung genau eine Implementierung hat statt zweier,
+  die auseinanderlaufen.
+- **Magic-Bytes-Prüfung beim Abschicken.** Weil die Bytes am Server vorbeigehen,
+  ist die Prüfung im Browser reine Kosmetik.
+
+Sobald `apiBaseUrl` in [src/index.html](src/index.html) gesetzt ist, verlässt das
+Frontend den Demo-Modus und nutzt `GcsUploadTarget` statt der Simulation.
+
+> Firestore kann keine Invarianten erzwingen. Was vorher RLS-Policies, ein
+> Trigger und ein partieller Unique-Index in Postgres erledigt haben, liegt
+> jetzt in Transaktionen im Backend — **schwächer als vorher**, und in
+> [server/README.md](server/README.md) im Detail begründet.
 
 ## Anmeldung und „Meine Beiträge“
 
 Konten werden **vorab generiert**, jede Person bekommt einen persönlichen Code.
 Diesen Code eingeben *ist* die Anmeldung — keine E-Mail, kein Passwort, keine
-Registrierung. Das hält die Reibung niedrig und speichert keine
-E-Mail-Adressen von Minderjährigen.
+Registrierung. Das hält die Reibung niedrig und speichert keine E-Mail-Adressen
+von Minderjährigen.
 
 Weil der Code damit ein **persönliches Zugangsmittel** ist, gilt:
 
@@ -84,7 +107,7 @@ Weil der Code damit ein **persönliches Zugangsmittel** ist, gilt:
   `crypto.getRandomValues` und Rejection Sampling — nie `Math.random`
 - ohne `I`, `O`, `L`, `U`, `0`, `1`: jeder Lesefehler vom Zettel ist eine Person,
   die die Seite für kaputt hält
-- gespeichert wird nur ein **bcrypt-Hash**, nie der Code selbst
+- gespeichert wird nur ein **scrypt-Hash**, nie der Code selbst
 - **Rate Limiting ist Pflicht** — ohne es nützt die Entropie nichts, weil einfach
   durchprobiert werden kann
 - Eingaben werden **nicht** stillschweigend korrigiert: ein `O` bleibt sichtbar
@@ -95,15 +118,16 @@ Die Sitzung liegt standardmäßig im `sessionStorage` und endet mit dem Tab.
 Schulrechner würde ein dauerhafter Login sonst der nächsten Person die eigenen
 Beiträge zeigen.
 
-Konten anlegen (aus einem vertrauenswürdigen Kontext, Service Role):
+Konten anlegen:
 
-```sql
-select provision_account('Mia Beispiel', 'Q2', 'DEMA-Q2MJ-A234');
+```bash
+cd server
+printf 'Mia Beispiel;Q2\nJonas Muster;Q2\n' | npx tsx src/provision.ts > codes.csv
 ```
 
-Dass jemand nur die **eigenen** Beiträge sieht, erzwingt die Datenbank über
-`current_account_id()` aus einem JWT-Claim — nicht die Website. Eine im
-Request mitgeschickte Konto-ID würde sonst reichen, um fremde Uploads zu lesen.
+Dass jemand nur die **eigenen** Beiträge sieht, entscheidet die API anhand der
+Konto-ID aus dem signierten Session-Token — nie anhand einer ID aus dem Request.
+Eine mitgeschickte Konto-ID würde sonst reichen, um fremde Uploads zu lesen.
 
 ## Rückzug von Beiträgen
 
@@ -123,16 +147,11 @@ er entscheidet nicht über sie. Deshalb gibt es bewusst **keinen Status
 | `erledigt` | Team hat das Material gelöscht. |
 | `zurueckgenommen` | Die Person hat den Antrag selbst zurückgenommen. |
 
-Das „nicht verwenden“ hängt nicht am Frontend: ein Datenbank-Trigger
-(`block_use_while_withdrawal_open`) verhindert, dass ein Beitrag mit offenem
-Antrag auf `verwendet` gesetzt wird. Ein Fehlklick in der Oberfläche kann es
-also nicht umgehen. Ebenso lässt ein partieller Unique-Index nur **einen**
-offenen Antrag pro Beitrag zu, und die RLS-Policy erlaubt Schüler:innen als
-einzige Änderung `offen → zurueckgenommen` am eigenen Antrag.
-
-Wichtig fürs Backend: Beim Abschluss mit `erledigt` müssen auch die
-**Storage-Objekte** gelöscht werden. Der Cascade entfernt nur die
-Asset-Datensätze, nicht die Dateien.
+Durchgesetzt wird das in Firestore-Transaktionen im Backend: `PATCH /submissions/:id`
+verweigert `verwendet`, solange ein Antrag offen ist, und das Feld
+`submission.openWithdrawal` sorgt dafür, dass pro Beitrag nur **ein** Antrag offen
+sein kann. Beim Abschluss mit `erledigt` werden auch die Storage-Objekte gelöscht,
+nicht nur der Datensatz.
 
 ## Warum der Upload so gebaut ist
 
@@ -142,8 +161,8 @@ Die vier Entscheidungen, die den Unterschied zwischen „funktioniert im Test“
 1. **Bytes gehen direkt in den Object Storage**, nie durch einen App-Server.
    Handyvideos sind 200 MB–2 GB; ein Upload durch eine Serverless-Funktion
    scheitert an Request-Limits.
-2. **Resumable über tus.** Abbrüche sind der Normalfall, nicht die Ausnahme. Ein
-   1,4-GB-Video darf nicht bei 90 % neu beginnen.
+2. **Resumable über das GCS-Protokoll.** Abbrüche sind der Normalfall, nicht die
+   Ausnahme. Ein 1,4-GB-Video darf nicht bei 90 % neu beginnen.
 3. **Die `File`-Objekte liegen in IndexedDB.** `File` ist structured-cloneable,
    deshalb überlebt die Warteschlange einen Reload und setzt am Byte-Offset fort,
    ohne dass die Datei erneut ausgewählt werden muss.
@@ -153,57 +172,18 @@ Die vier Entscheidungen, die den Unterschied zwischen „funktioniert im Test“
    rendern, Chrome und Firefox nicht.
 
 Dateien laden sofort nach der Auswahl hoch, während das Formular noch ausgefüllt
-wird. Der Beitrag wird erst beim Absenden angelegt und referenziert die fertigen
-Assets. Deshalb sind `assets.submission_id` in der Datenbank nullable — und deshalb
-braucht es den Cleanup-Job für verwaiste Assets (siehe Migration).
+wird. Der Beitrag entsteht erst beim Absenden und referenziert die fertigen
+Objekte. Deshalb existieren Upload-Objekte zeitweise ohne Beitrag — und deshalb
+braucht es den Cleanup-Job für verwaiste Objekte (siehe server/README.md).
 
-## Backend anbinden
-
-1. Supabase-Projekt in einer **EU-Region** anlegen (Frankfurt).
-2. `supabase db push` — legt Tabellen, RLS-Policies und die Cleanup-Funktionen an.
-3. Nicht-öffentlichen Storage-Bucket erstellen (`abifilm-originals`).
-4. `.env.example` nach `.env` kopieren und füllen.
-5. `uploadEndpoint` und `apiBaseUrl` in `src/index.html` setzen — damit schalten
-   automatisch `TusUploadTarget` und `HttpSubmissionGateway` scharf.
-
-Erwartete API-Endpunkte:
-
-| Methode | Pfad | Zweck |
-|---|---|---|
-| `POST` | `/session` | Persönlichen Code gegen Session-Token tauschen (rate-limited!) |
-| `POST` | `/auth/sign-in` | Team-Anmeldung |
-| `POST` | `/submissions` | Beitrag anlegen (verknüpft die Assets) |
-| `GET` | `/submissions/mine` | Eigene Beiträge — Besitzer kommt aus dem Token, nie aus der URL |
-| `POST` | `/submissions/mine/:id/withdrawal` | Rückzugsantrag stellen |
-| `DELETE` | `/withdrawals/mine/:id` | Eigenen Antrag zurücknehmen |
-| `GET` | `/withdrawals` | Anträge für das Team |
-| `PATCH` | `/withdrawals/:id` | Antrag abschließen (löscht bei `erledigt` auch die Dateien) |
-| `GET` | `/submissions` | Liste für das Team (RLS-geschützt) |
-| `PATCH` | `/submissions/:id` | Review-Status setzen |
-| `DELETE` | `/submissions/:id` | Beitrag inkl. Storage-Objekte löschen |
-| `GET` | `/submissions/count` | Öffentlicher Zähler für die Startseite |
-
-Serverseitig zwingend nachzuziehen:
-
-- **Magic-Bytes-Prüfung** der Dateien. Die Client-Validierung ist reines UX.
-- **Rate Limiting** pro IP (Werte in `.env.example`) — für Uploads *und* für
-  `/session`, sonst ist der Code durchprobierbar.
-- **Gleiche Antwort** für unbekannten und gesperrten Code, damit sich über die
-  Antwort nicht herausfinden lässt, welche Codes existieren.
-- **Thumbnails/Proxies** per ffmpeg als Ableitung; Originale nie neu kodieren.
-- **Löschung der Storage-Objekte** in denselben Jobs, die DB-Zeilen löschen.
-
-## Deployment (Cloudflare Workers)
-
-In den Cloudflare-Einstellungen unter **Workers & Pages → Build**:
+## Deployment (Frontend, Cloudflare Workers)
 
 | Feld | Wert |
 |---|---|
 | Build command | `npm run build` |
 | Deploy command | `npx wrangler deploy` |
 
-Die Konfiguration steht in [wrangler.jsonc](wrangler.jsonc). Zwei Dinge daran sind
-nicht optional:
+Konfiguration in [wrangler.jsonc](wrangler.jsonc). Zwei Dinge sind nicht optional:
 
 - **`not_found_handling: "single-page-application"`** — Angular routet im Browser,
   auf dem Server existiert keine Datei `/upload`. Ohne diese Zeile liefert ein
@@ -211,22 +191,22 @@ nicht optional:
 - **`directory: "./dist/Steinabi/browser"`** — Angular legt das Ergebnis in einen
   `browser/`-Unterordner, nicht direkt in `dist/`.
 
-Security-Header und Cache-Regeln stehen in [public/_headers](public/_headers) und
-werden vom Build in den Output kopiert. Wichtig beim Anbinden des Backends: die
-CSP-Direktive `connect-src` muss um die Supabase-Domain erweitert werden, sonst
-blockiert der Browser jeden Upload.
-
-Lokal testen: `npm run build && npm run preview`.
+Security-Header und Cache-Regeln stehen in [public/_headers](public/_headers).
+**Wichtig:** `connect-src` muss um die Cloud-Run-Domain erweitert werden und
+zusätzlich `https://storage.googleapis.com` erlauben, sonst blockiert der Browser
+die Upload-Chunks.
 
 ## Offene Punkte vor dem Livegang
 
 - [ ] Alle `⟨Platzhalter⟩` in `core/config.ts`, `/impressum`, `/datenschutz` ersetzen
 - [ ] Datenschutzerklärung und Impressum von Schulleitung und Datenschutzbeauftragten
       freigeben lassen — der Entwurf ist **nicht juristisch geprüft**
-- [ ] Echte Team-Authentifizierung; der Demo-Login ist ein Platzhalter
+- [ ] Einsendeschluss bestätigen (aktuell 31.03.2027, geraten)
+- [ ] Echte Team-Authentifizierung über IAP; der Demo-Login ist ein Platzhalter
 - [ ] Offizielles Schulgrün in `src/styles.css` eintragen, falls vorhanden
 - [x] Security-Header setzen — `public/_headers`
-- [ ] `connect-src` in `public/_headers` um die Backend-Domain erweitern
+- [ ] `connect-src` um Cloud Run und `storage.googleapis.com` erweitern
+- [ ] Cronjobs: verwaiste Uploads, Löschfrist nach der Abiturfeier
 - [ ] Lighthouse auf `/` und `/upload` prüfen
-- [ ] Echttest: 500-MB-Video mit unterbrochener Verbindung, HEIC vom iPhone
+- [ ] Echttest: 2-GB-Video mit unterbrochener Verbindung, HEIC vom iPhone
 - [ ] Entscheidung offen: öffentliche Galerie ja/nein (aktuell nicht gebaut)

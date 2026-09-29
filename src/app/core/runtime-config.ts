@@ -5,8 +5,6 @@
  * environment. Nothing secret belongs here -- it ships to the browser.
  */
 export interface RuntimeConfig {
-  /** tus 1.0.0 creation endpoint for resumable uploads. */
-  uploadEndpoint: string;
   /** Base URL of the submissions API. */
   apiBaseUrl: string;
 }
@@ -20,7 +18,6 @@ declare global {
 const injected = (typeof window !== 'undefined' && window.__STEINABI__) || {};
 
 export const runtimeConfig: RuntimeConfig = {
-  uploadEndpoint: injected.uploadEndpoint?.trim() ?? '',
   apiBaseUrl: injected.apiBaseUrl?.trim() ?? '',
 };
 
@@ -30,4 +27,4 @@ export const runtimeConfig: RuntimeConfig = {
  * `localStorage` -- none of which is secure. The UI shows a permanent banner
  * so a demo build can never be mistaken for a production deployment.
  */
-export const isDemoMode = runtimeConfig.uploadEndpoint === '' || runtimeConfig.apiBaseUrl === '';
+export const isDemoMode = runtimeConfig.apiBaseUrl === '';
