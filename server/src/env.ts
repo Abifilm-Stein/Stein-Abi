@@ -58,6 +58,13 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
 
+  /** Film team: allowed e-mail addresses (comma separated) and scrypt password hash. */
+  teamEmails: (process.env['TEAM_EMAILS'] ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+  teamPasswordHash: process.env['TEAM_PASSWORD_HASH']?.trim() ?? '',
+
   port: optionalInt('PORT', 8080),
 } as const;
 

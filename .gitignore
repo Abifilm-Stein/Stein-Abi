@@ -56,3 +56,4 @@ codes.csv
 *.codes.csv
 .env.cloudflare
 codes-test.csv
+team-passwort.txt

@@ -26,6 +26,7 @@ export class AuthService {
 
   private readonly _session = signal<string | null>(readStoredSession());
   readonly isSignedIn = computed(() => this._session() !== null);
+  readonly token = this._session.asReadonly();
 
   private readonly _pending = signal(false);
   readonly pending = this._pending.asReadonly();

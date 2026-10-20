@@ -1,3 +1,4 @@
+import { AuthService } from '../auth/auth.service';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
@@ -29,8 +30,7 @@ export abstract class MediaGateway {
   /** Public counter for the landing page. */
   abstract count(): Promise<number>;
 
-  /* Team only. These routes sit behind Google IAM, so the browser sends the
-   * IAP cookie automatically and no token is attached here. */
+  /* Team only. These routes require the team token from POST /auth/sign-in. */
   abstract listAll(): Promise<MediaItem[]>;
   abstract adminSignedUrl(mediaId: string): Promise<string>;
   abstract setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void>;
@@ -46,10 +46,15 @@ export abstract class MediaGateway {
 export class HttpMediaGateway implements MediaGateway {
   private readonly http = inject(HttpClient);
   private readonly session = inject(SessionService);
+  private readonly team = inject(AuthService);
   private readonly base = runtimeConfig.apiBaseUrl.replace(/\/$/, '');
 
   private authHeaders(): HttpHeaders {
     return new HttpHeaders({ Authorization: `Bearer ${this.session.token() ?? ''}` });
+  }
+
+  private teamHeaders(): HttpHeaders {
+    return new HttpHeaders({ Authorization: `Bearer ${this.team.token() ?? ''}` });
   }
 
   create(draft: MediaDraft): Promise<MediaItem> {
@@ -102,14 +107,14 @@ export class HttpMediaGateway implements MediaGateway {
 
   listAll(): Promise<MediaItem[]> {
     return firstValueFrom(
-      this.http.get<MediaItem[]>(`${this.base}/admin/media`, { withCredentials: true }),
+      this.http.get<MediaItem[]>(`${this.base}/admin/media`, { headers: this.teamHeaders() }),
     );
   }
 
   async adminSignedUrl(mediaId: string): Promise<string> {
     const result = await firstValueFrom(
       this.http.get<{ url: string }>(`${this.base}/admin/media/${mediaId}/url`, {
-        withCredentials: true,
+        headers: this.teamHeaders(),
       }),
     );
     return result.url;
@@ -120,7 +125,7 @@ export class HttpMediaGateway implements MediaGateway {
       this.http.patch(
         `${this.base}/admin/media/${mediaId}`,
         { reviewStatus: status },
-        { withCredentials: true },
+        { headers: this.teamHeaders() },
       ),
     );
   }
@@ -128,7 +133,7 @@ export class HttpMediaGateway implements MediaGateway {
   listWithdrawals(): Promise<WithdrawalRequest[]> {
     return firstValueFrom(
       this.http.get<WithdrawalRequest[]>(`${this.base}/admin/withdrawals`, {
-        withCredentials: true,
+        headers: this.teamHeaders(),
       }),
     );
   }
@@ -142,7 +147,7 @@ export class HttpMediaGateway implements MediaGateway {
       this.http.patch(
         `${this.base}/admin/withdrawals/${requestId}`,
         { status: outcome, note },
-        { withCredentials: true },
+        { headers: this.teamHeaders() },
       ),
     );
   }

@@ -86,7 +86,8 @@ export async function issueToken(session: Session): Promise<string> {
 export async function readToken(token: string): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
-    if (typeof payload.sub !== 'string') return null;
+    // Team tokens carry an audience; they must never pass as a student session.
+    if (typeof payload.sub !== 'string' || payload.aud !== undefined) return null;
     return {
       accountId: payload.sub,
       displayName: String(payload['displayName'] ?? ''),
@@ -145,4 +146,62 @@ export async function signIn(rawCode: string, ip: string): Promise<SignInOutcome
   }
 
   return { ok: false, reason: 'invalid' };
+}
+
+
+/* -------------------------------------------------------------------------
+ * Film team
+ * ---------------------------------------------------------------------- */
+
+const TEAM_AUDIENCE = 'team';
+const TEAM_TTL_HOURS = 8;
+
+/** Hash a team password: `scrypt$<salt hex>$<key hex>` (same format as codes). */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16);
+  const key = await scryptAsync(password, salt, KEY_LENGTH);
+  return `scrypt$${salt.toString('hex')}$${key.toString('hex')}`;
+}
+
+/**
+ * Team sign-in: e-mail allow-list plus one shared password, rate limited per
+ * IP like the student login. Unknown e-mail and wrong password give the same
+ * answer, and the password hash is always computed so timing does not reveal
+ * whether the e-mail was on the list.
+ */
+export async function signInTeam(
+  email: string,
+  password: string,
+  ip: string,
+): Promise<{ ok: true; token: string } | { ok: false; reason: 'invalid' | 'rate-limited' }> {
+  const allowed = await db.runTransaction((tx) =>
+    consumeQuota(tx, `team_${hashIp(ip)}`, env.loginAttemptsPerHour),
+  );
+  if (!allowed) return { ok: false, reason: 'rate-limited' };
+
+  const normalised = email.trim().toLowerCase();
+  const passwordOk = env.teamPasswordHash ? await verifyCode(password, env.teamPasswordHash) : false;
+  const emailOk = env.teamEmails.includes(normalised);
+  if (!passwordOk || !emailOk) return { ok: false, reason: 'invalid' };
+
+  const token = await new SignJWT({ role: 'team' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(normalised)
+    .setAudience(TEAM_AUDIENCE)
+    .setIssuedAt()
+    .setExpirationTime(`${TEAM_TTL_HOURS}h`)
+    .sign(secret);
+  return { ok: true, token };
+}
+
+export async function readTeamToken(token: string): Promise<string | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ['HS256'],
+      audience: TEAM_AUDIENCE,
+    });
+    return payload['role'] === 'team' && typeof payload.sub === 'string' ? payload.sub : null;
+  } catch {
+    return null;
+  }
 }

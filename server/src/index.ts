@@ -15,7 +15,7 @@ import {
   signedUrlFor,
   type MediaDoc,
 } from './media.js';
-import { hashIp, issueToken, readToken, signIn, type Session } from './session.js';
+import { hashIp, issueToken, readTeamToken, readToken, signIn, signInTeam, type Session } from './session.js';
 
 const CONSENT_VERSION = '2026-09-10';
 
@@ -61,16 +61,16 @@ const requireSession = createMiddleware<{ Variables: Vars }>(async (c, next) => 
 /**
  * Film team.
  *
- * Deliberately NOT the same mechanism as the student session: team identity
- * comes from Google Cloud IAM in front of the service (IAP, or a second
- * service deployed with --no-allow-unauthenticated). Rolling our own admin
- * password would be the weakest link in a system whose entire point is that
- * only this group may see other people's files.
+ * A separate token from the student session (own audience), issued by
+ * POST /auth/sign-in to an e-mail allow-list with a hashed password. The
+ * earlier version trusted the IAP header, which anyone can forge on a
+ * publicly reachable service.
  */
 const requireTeam = createMiddleware<{ Variables: Vars }>(async (c, next) => {
-  if (!c.req.header('x-goog-authenticated-user-email')) {
-    return c.json({ error: 'Nur fuer das Abifilm-Team.' }, 403);
-  }
+  const header = c.req.header('authorization') ?? '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
+  const email = token ? await readTeamToken(token) : null;
+  if (!email) return c.json({ error: 'Nur fuer das Abifilm-Team.' }, 403);
   await next();
 });
 
@@ -83,6 +83,22 @@ function mediaErrorStatus(code: string): 400 | 403 | 404 {
 /* -------------------------------------------------------------------------
  * Session
  * ---------------------------------------------------------------------- */
+
+app.post('/auth/sign-in', async (c) => {
+  const parsed = z
+    .object({ email: z.string().min(1).max(200), password: z.string().min(1).max(200) })
+    .safeParse(await c.req.json().catch(() => null));
+  if (!parsed.success) return c.json({ error: 'Angaben fehlen.' }, 400);
+
+  const outcome = await signInTeam(parsed.data.email, parsed.data.password, callerIp(c));
+  if (!outcome.ok) {
+    if (outcome.reason === 'rate-limited') {
+      return c.json({ error: 'Zu viele Versuche. Bitte warte eine Stunde.' }, 429);
+    }
+    return c.json({ error: 'E-Mail oder Passwort stimmen nicht.' }, 401);
+  }
+  return c.json({ token: outcome.token });
+});
 
 app.post('/session', async (c) => {
   const parsed = z
