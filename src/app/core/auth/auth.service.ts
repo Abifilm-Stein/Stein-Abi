@@ -7,7 +7,7 @@ import { isDemoMode, runtimeConfig } from '../runtime-config';
 const SESSION_KEY = 'steinabi-team-session';
 
 /** Demo credentials. Replaced by real auth as soon as a backend exists. */
-const DEMO_EMAIL = 'team@example.de';
+const DEMO_USER = 'team';
 const DEMO_PASSWORD = 'abifilm';
 
 /**
@@ -31,14 +31,14 @@ export class AuthService {
   private readonly _pending = signal(false);
   readonly pending = this._pending.asReadonly();
 
-  async signIn(email: string, password: string): Promise<boolean> {
+  async signIn(username: string, password: string): Promise<boolean> {
     this._pending.set(true);
     try {
       const session = isDemoMode
-        ? email.trim().toLowerCase() === DEMO_EMAIL && password === DEMO_PASSWORD
+        ? username.trim().toLowerCase() === DEMO_USER && password === DEMO_PASSWORD
           ? 'demo-session'
           : null
-        : await this.requestSession(email, password);
+        : await this.requestSession(username, password);
 
       if (!session) return false;
 
@@ -63,11 +63,11 @@ export class AuthService {
     }
   }
 
-  private async requestSession(email: string, password: string): Promise<string | null> {
+  private async requestSession(username: string, password: string): Promise<string | null> {
     const base = runtimeConfig.apiBaseUrl.replace(/\/$/, '');
     try {
       const result = await firstValueFrom(
-        this.http.post<{ token: string }>(`${base}/auth/sign-in`, { email, password }),
+        this.http.post<{ token: string }>(`${base}/auth/sign-in`, { username, password }),
       );
       return result.token ?? null;
     } catch {

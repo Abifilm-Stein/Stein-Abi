@@ -163,14 +163,16 @@ export async function hashPassword(password: string): Promise<string> {
   return `scrypt$${salt.toString('hex')}$${key.toString('hex')}`;
 }
 
+/** Stand-in hash so an unknown username costs the same time as a wrong password. */
+const DUMMY_HASH = `scrypt$${'00'.repeat(16)}$${'00'.repeat(KEY_LENGTH)}`;
+
 /**
- * Team sign-in: e-mail allow-list plus one shared password, rate limited per
- * IP like the student login. Unknown e-mail and wrong password give the same
- * answer, and the password hash is always computed so timing does not reveal
- * whether the e-mail was on the list.
+ * Team sign-in: personal username and password per team member, rate limited
+ * per IP like the student login. Unknown user and wrong password give the same
+ * answer and take the same time.
  */
 export async function signInTeam(
-  email: string,
+  username: string,
   password: string,
   ip: string,
 ): Promise<{ ok: true; token: string } | { ok: false; reason: 'invalid' | 'rate-limited' }> {
@@ -179,14 +181,14 @@ export async function signInTeam(
   );
   if (!allowed) return { ok: false, reason: 'rate-limited' };
 
-  const normalised = email.trim().toLowerCase();
-  const passwordOk = env.teamPasswordHash ? await verifyCode(password, env.teamPasswordHash) : false;
-  const emailOk = env.teamEmails.includes(normalised);
-  if (!passwordOk || !emailOk) return { ok: false, reason: 'invalid' };
+  const name = username.trim().toLowerCase();
+  const stored = Object.hasOwn(env.teamUsers, name) ? env.teamUsers[name]! : undefined;
+  const passwordOk = await verifyCode(password, stored ?? DUMMY_HASH);
+  if (!stored || !passwordOk) return { ok: false, reason: 'invalid' };
 
   const token = await new SignJWT({ role: 'team' })
     .setProtectedHeader({ alg: 'HS256' })
-    .setSubject(normalised)
+    .setSubject(name)
     .setAudience(TEAM_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${TEAM_TTL_HOURS}h`)

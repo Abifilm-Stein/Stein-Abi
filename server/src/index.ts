@@ -62,7 +62,7 @@ const requireSession = createMiddleware<{ Variables: Vars }>(async (c, next) => 
  * Film team.
  *
  * A separate token from the student session (own audience), issued by
- * POST /auth/sign-in to an e-mail allow-list with a hashed password. The
+ * POST /auth/sign-in to personal accounts with hashed passwords. The
  * earlier version trusted the IAP header, which anyone can forge on a
  * publicly reachable service.
  */
@@ -86,16 +86,16 @@ function mediaErrorStatus(code: string): 400 | 403 | 404 {
 
 app.post('/auth/sign-in', async (c) => {
   const parsed = z
-    .object({ email: z.string().min(1).max(200), password: z.string().min(1).max(200) })
+    .object({ username: z.string().min(1).max(100), password: z.string().min(1).max(200) })
     .safeParse(await c.req.json().catch(() => null));
   if (!parsed.success) return c.json({ error: 'Angaben fehlen.' }, 400);
 
-  const outcome = await signInTeam(parsed.data.email, parsed.data.password, callerIp(c));
+  const outcome = await signInTeam(parsed.data.username, parsed.data.password, callerIp(c));
   if (!outcome.ok) {
     if (outcome.reason === 'rate-limited') {
       return c.json({ error: 'Zu viele Versuche. Bitte warte eine Stunde.' }, 429);
     }
-    return c.json({ error: 'E-Mail oder Passwort stimmen nicht.' }, 401);
+    return c.json({ error: 'Benutzername oder Passwort stimmen nicht.' }, 401);
   }
   return c.json({ token: outcome.token });
 });

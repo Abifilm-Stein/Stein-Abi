@@ -22,6 +22,18 @@ function optionalInt(name: string, fallback: number): number {
   return parsed;
 }
 
+function parseTeamUsers(raw: string | undefined): Record<string, string> {
+  if (!raw?.trim()) return {};
+  const parsed: unknown = JSON.parse(raw);
+  if (typeof parsed !== 'object' || parsed === null) throw new Error('TEAM_USERS must be a JSON object');
+  return Object.fromEntries(
+    Object.entries(parsed as Record<string, unknown>).map(([name, hash]) => [
+      name.trim().toLowerCase(),
+      String(hash),
+    ]),
+  );
+}
+
 export const env = {
   /** GCP project. Set automatically on Cloud Run. */
   projectId: process.env['GOOGLE_CLOUD_PROJECT']?.trim() || undefined,
@@ -58,12 +70,8 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
 
-  /** Film team: allowed e-mail addresses (comma separated) and scrypt password hash. */
-  teamEmails: (process.env['TEAM_EMAILS'] ?? '')
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean),
-  teamPasswordHash: process.env['TEAM_PASSWORD_HASH']?.trim() ?? '',
+  /** Film team: JSON object `{ "username": "<scrypt hash>" }`. */
+  teamUsers: parseTeamUsers(process.env['TEAM_USERS']),
 
   port: optionalInt('PORT', 8080),
 } as const;

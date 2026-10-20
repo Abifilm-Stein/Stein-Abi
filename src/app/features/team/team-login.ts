@@ -14,14 +14,14 @@ import { isDemoMode } from '../../core/runtime-config';
 
       <form (ngSubmit)="submit()">
         <div class="mb-4">
-          <label for="email" class="field-label">E-Mail</label>
+          <label for="username" class="field-label">Benutzername</label>
           <input
-            id="email"
-            name="email"
-            type="email"
+            id="username"
+            name="username"
+            type="text"
             class="field-input"
-            autocomplete="email"
-            [(ngModel)]="email"
+            autocomplete="username"
+            [(ngModel)]="username"
           />
         </div>
 
@@ -42,7 +42,7 @@ import { isDemoMode } from '../../core/runtime-config';
         @if (failed()) {
           <p id="login-error" class="field-error" role="alert">
             <span aria-hidden="true">⚠</span>
-            <span>E-Mail oder Passwort stimmen nicht.</span>
+            <span>Benutzername oder Passwort stimmen nicht.</span>
           </p>
         }
 
@@ -54,7 +54,7 @@ import { isDemoMode } from '../../core/runtime-config';
       @if (demoMode) {
         <p class="mt-5 rounded-lg bg-warn-soft p-3 text-xs" style="color: var(--warn)">
           <strong>Demo-Modus.</strong> Anmeldung mit
-          <span class="font-mono">team&#64;example.de</span> /
+          <span class="font-mono">team</span> /
           <span class="font-mono">abifilm</span>. Die Prüfung läuft im Browser und ist
           <strong>keine Sicherheitsmaßnahme</strong> — produktiv muss der Server die Sitzung
           ausgeben und die Rolle bei jedem Zugriff durchsetzen.
@@ -68,7 +68,7 @@ export class TeamLogin {
   private readonly router = inject(Router);
 
   protected readonly demoMode = isDemoMode;
-  protected email = '';
+  protected username = '';
   protected password = '';
   protected readonly failed = signal(false);
 
@@ -80,7 +80,7 @@ export class TeamLogin {
 
   protected async submit(): Promise<void> {
     this.failed.set(false);
-    const ok = await this.auth.signIn(this.email, this.password);
+    const ok = await this.auth.signIn(this.username, this.password);
     if (!ok) this.failed.set(true);
   }
 }
