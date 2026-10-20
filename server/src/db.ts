@@ -101,3 +101,30 @@ export async function consumeQuota(
   );
   return true;
 }
+
+/**
+ * Consume several quotas atomically. Firestore transactions require every
+ * read to precede every write, so all counters are read first and written
+ * only if none of them is exhausted.
+ */
+export async function consumeQuotas(
+  tx: Transaction,
+  quotas: { key: string; limit: number; amount?: number }[],
+): Promise<boolean> {
+  const bucket = Math.floor(Date.now() / 3_600_000);
+  const refs = quotas.map((q) => collections.rateLimits.doc(`${q.key}_${bucket}`));
+  const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
+
+  const used = snapshots.map((s) => (s.exists ? ((s.get('used') as number) ?? 0) : 0));
+  const exceeded = quotas.some((q, i) => used[i]! + (q.amount ?? 1) > q.limit);
+  if (exceeded) return false;
+
+  quotas.forEach((q, i) => {
+    tx.set(
+      refs[i]!,
+      { used: used[i]! + (q.amount ?? 1), expiresAt: new Date((bucket + 2) * 3_600_000) },
+      { merge: true },
+    );
+  });
+  return true;
+}

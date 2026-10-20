@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { createMiddleware } from 'hono/factory';
 import { z } from 'zod';
-import { collections, consumeQuota, db, nowIso, type WithdrawalDoc } from './db.js';
+import { collections, consumeQuotas, db, nowIso, type WithdrawalDoc } from './db.js';
 import { env } from './env.js';
 import {
   confirmUpload,
@@ -128,8 +128,10 @@ app.post('/media/uploads', requireSession, async (c) => {
 
   const ipKey = hashIp(callerIp(c));
   const allowed = await db.runTransaction(async (tx) => {
-    if (!(await consumeQuota(tx, `files_${ipKey}`, env.uploadsPerHour))) return false;
-    return consumeQuota(tx, `bytes_${ipKey}`, env.uploadBytesPerHour, parsed.data.sizeBytes);
+    return consumeQuotas(tx, [
+      { key: `files_${ipKey}`, limit: env.uploadsPerHour },
+      { key: `bytes_${ipKey}`, limit: env.uploadBytesPerHour, amount: parsed.data.sizeBytes },
+    ]);
   });
   if (!allowed) {
     return c.json({ error: 'Stundenlimit erreicht. Bitte spaeter weitermachen.' }, 429);

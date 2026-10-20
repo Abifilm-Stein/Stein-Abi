@@ -54,3 +54,5 @@ server/dist
 # Provisionierte Klartext-Codes duerfen nie ins Repo
 codes.csv
 *.codes.csv
+.env.cloudflare
+codes-test.csv
