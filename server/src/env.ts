@@ -53,15 +53,25 @@ export const env = {
   /** How long a student session lasts. */
   sessionTtlHours: optionalInt('SESSION_TTL_HOURS', 12),
 
-  /** Login attempts per IP per hour. The codes are strong; this stops brute force. */
-  loginAttemptsPerHour: optionalInt('LOGIN_ATTEMPTS_PER_HOUR', 10),
+  /** Student login attempts per IP per hour. A school shares one IP, and the
+   * 12-character codes are far too strong to brute force at this rate. */
+  loginAttemptsPerHour: optionalInt('LOGIN_ATTEMPTS_PER_HOUR', 300),
 
-  /** Upload sessions per IP per hour, i.e. the file count ceiling. */
-  uploadsPerHour: optionalInt('UPLOADS_PER_HOUR', 40),
+  /** Team login attempts per IP per hour. Kept strict: few people, one password each. */
+  teamLoginAttemptsPerHour: optionalInt('TEAM_LOGIN_ATTEMPTS_PER_HOUR', 10),
+
+  /** Upload sessions per IP per hour (a whole school may share one IP). */
+  uploadsPerHour: optionalInt('UPLOADS_PER_HOUR', 400),
 
   /** Total bytes per IP per hour. */
   uploadBytesPerHour: Number(
-    process.env['UPLOAD_BYTES_PER_HOUR']?.trim() || String(5 * 1024 * 1024 * 1024),
+    process.env['UPLOAD_BYTES_PER_HOUR']?.trim() || String(80 * 1024 * 1024 * 1024),
+  ),
+
+  /** Per account and day: files and bytes. Bounds what one stolen or abused code can store. */
+  accountFilesPerDay: optionalInt('ACCOUNT_FILES_PER_DAY', 30),
+  accountBytesPerDay: Number(
+    process.env['ACCOUNT_BYTES_PER_DAY']?.trim() || String(12 * 1024 * 1024 * 1024),
   ),
 
   /** Origins allowed to call the API and upload. */

@@ -147,10 +147,17 @@ app.post('/media/uploads', requireSession, async (c) => {
     return consumeQuotas(tx, [
       { key: `files_${ipKey}`, limit: env.uploadsPerHour },
       { key: `bytes_${ipKey}`, limit: env.uploadBytesPerHour, amount: parsed.data.sizeBytes },
+      { key: `acct_files_${session.accountId}`, limit: env.accountFilesPerDay, windowHours: 24 },
+      {
+        key: `acct_bytes_${session.accountId}`,
+        limit: env.accountBytesPerDay,
+        amount: parsed.data.sizeBytes,
+        windowHours: 24,
+      },
     ]);
   });
   if (!allowed) {
-    return c.json({ error: 'Stundenlimit erreicht. Bitte spaeter weitermachen.' }, 429);
+    return c.json({ error: 'Upload-Limit erreicht. Bitte spaeter weitermachen.' }, 429);
   }
 
   const origin = c.req.header('origin') ?? env.allowedOrigins[0]!;

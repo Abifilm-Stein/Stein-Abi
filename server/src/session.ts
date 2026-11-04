@@ -177,7 +177,7 @@ export async function signInTeam(
   ip: string,
 ): Promise<{ ok: true; token: string } | { ok: false; reason: 'invalid' | 'rate-limited' }> {
   const allowed = await db.runTransaction((tx) =>
-    consumeQuota(tx, `team_${hashIp(ip)}`, env.loginAttemptsPerHour),
+    consumeQuota(tx, `team_${hashIp(ip)}`, env.teamLoginAttemptsPerHour),
   );
   if (!allowed) return { ok: false, reason: 'rate-limited' };
 

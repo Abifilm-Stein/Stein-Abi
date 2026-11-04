@@ -109,10 +109,11 @@ export async function consumeQuota(
  */
 export async function consumeQuotas(
   tx: Transaction,
-  quotas: { key: string; limit: number; amount?: number }[],
+  quotas: { key: string; limit: number; amount?: number; windowHours?: number }[],
 ): Promise<boolean> {
-  const bucket = Math.floor(Date.now() / 3_600_000);
-  const refs = quotas.map((q) => collections.rateLimits.doc(`${q.key}_${bucket}`));
+  const now = Date.now();
+  const bucketOf = (q: { windowHours?: number }) => Math.floor(now / ((q.windowHours ?? 1) * 3_600_000));
+  const refs = quotas.map((q) => collections.rateLimits.doc(`${q.key}_${bucketOf(q)}`));
   const snapshots = await Promise.all(refs.map((ref) => tx.get(ref)));
 
   const used = snapshots.map((s) => (s.exists ? ((s.get('used') as number) ?? 0) : 0));
@@ -122,7 +123,10 @@ export async function consumeQuotas(
   quotas.forEach((q, i) => {
     tx.set(
       refs[i]!,
-      { used: used[i]! + (q.amount ?? 1), expiresAt: new Date((bucket + 2) * 3_600_000) },
+      {
+        used: used[i]! + (q.amount ?? 1),
+        expiresAt: new Date((bucketOf(q) + 2) * (q.windowHours ?? 1) * 3_600_000),
+      },
       { merge: true },
     );
   });
