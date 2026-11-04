@@ -159,3 +159,31 @@ Datenbank, die sie irgendwann preisgibt.
 - [ ] IAP vor die Team-Pfade setzen
 - [ ] Composite Indexes anlegen
 - [ ] Lasttest mit einem 2-GB-Video über eine abbrechende Verbindung
+
+## Kostenbremsen
+
+| Schutz | Wert | Wo |
+|---|---|---|
+| Uploads pro IP und Stunde | 400 Dateien, 80 GB | `UPLOADS_PER_HOUR`, `UPLOAD_BYTES_PER_HOUR` |
+| Uploads pro Konto und Tag | 30 Dateien, 12 GB | `ACCOUNT_FILES_PER_DAY`, `ACCOUNT_BYTES_PER_DAY` |
+| Download-Links pro Konto und Tag | 40 | `ACCOUNT_DOWNLOADS_PER_DAY` |
+| Schüler-Logins pro IP und Stunde | 300 | `LOGIN_ATTEMPTS_PER_HOUR` |
+| Team-Logins pro IP und Stunde | 10 | `TEAM_LOGIN_ATTEMPTS_PER_HOUR` |
+| Cloud-Run-Instanzen | höchstens 3 | `deploy.sh` |
+
+Eine Schule teilt sich meist eine öffentliche IP, deshalb sind die IP-Grenzen
+großzügig. Die eigentliche Obergrenze setzt das Konto-Limit.
+
+### Cleanup verwaister Uploads
+
+`POST /internal/cleanup` löscht Objekte, die älter als 24 h sind und zu keinem
+Media-Dokument gehören. Aufruf mit `Authorization: Bearer <CLEANUP_TOKEN>`,
+ohne Token ist der Endpunkt gesperrt.
+
+```bash
+openssl rand -base64 32 | gcloud secrets create steinabi-cleanup-token --data-file=-
+gcloud scheduler jobs create http steinabi-cleanup --location=europe-west3 \
+  --schedule="30 3 * * *" --time-zone="Europe/Berlin" --http-method=POST \
+  --uri="https://<cloud-run-url>/internal/cleanup" \
+  --headers="Authorization=Bearer <token>"
+```

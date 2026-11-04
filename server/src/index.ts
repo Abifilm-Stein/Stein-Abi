@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -9,6 +10,7 @@ import {
   confirmUpload,
   createUploadSession,
   deleteMedia,
+  deleteOrphanedObjects,
   listMediaByUser,
   MAX_VIDEO_BYTES,
   MediaError,
@@ -235,6 +237,15 @@ app.get('/media/:id/url', requireSession, async (c) => {
   const doc = snapshot.data() as MediaDoc;
   if (doc.userId !== session.accountId) return c.json({ error: 'Nicht gefunden.' }, 404);
 
+  // Each link can be replayed for its whole lifetime, so the number of links
+  // per account is what bounds egress cost.
+  const allowed = await db.runTransaction((tx) =>
+    consumeQuotas(tx, [
+      { key: `dl_${session.accountId}`, limit: env.accountDownloadsPerDay, windowHours: 24 },
+    ]),
+  );
+  if (!allowed) return c.json({ error: 'Download-Limit fuer heute erreicht.' }, 429);
+
   const path = doc.storageUrl.replace(`gs://${env.bucket}/`, '');
   return c.json({ url: await signedUrlFor(path), expiresInMinutes: 15 });
 });
@@ -338,6 +349,24 @@ app.get('/admin/media', requireTeam, async (c) => {
 });
 
 /** Same as the student endpoint, but without the ownership restriction. */
+/**
+ * Called by Cloud Scheduler. Not session based: a shared secret in the
+ * Authorization header, compared in constant time. Disabled until
+ * CLEANUP_TOKEN is set.
+ */
+app.post('/internal/cleanup', async (c) => {
+  const expected = Buffer.from(env.cleanupToken);
+  const given = Buffer.from((c.req.header('authorization') ?? '').replace(/^Bearer /, ''));
+  if (
+    expected.length === 0 ||
+    given.length !== expected.length ||
+    !timingSafeEqual(given, expected)
+  ) {
+    return c.json({ error: 'Nicht erlaubt.' }, 403);
+  }
+  return c.json({ deleted: await deleteOrphanedObjects(24) });
+});
+
 app.get('/admin/media/:id/url', requireTeam, async (c) => {
   const snapshot = await collections.media.doc(c.req.param('id')).get();
   if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);

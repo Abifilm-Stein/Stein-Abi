@@ -367,3 +367,16 @@ export async function findOrphanedObjects(olderThanHours = 24): Promise<string[]
 
   return candidates.map((file) => file.name).filter((name) => !referenced.has(name));
 }
+
+/**
+ * Delete uploads nobody confirmed. Re-checks each object against the media
+ * collection first (findOrphanedObjects), so a file confirmed a moment ago
+ * is never removed.
+ */
+export async function deleteOrphanedObjects(olderThanHours = 24): Promise<number> {
+  const names = await findOrphanedObjects(olderThanHours);
+  await Promise.all(
+    names.map((name) => bucket.file(name).delete({ ignoreNotFound: true }).catch(() => undefined)),
+  );
+  return names.length;
+}

@@ -74,6 +74,12 @@ export const env = {
     process.env['ACCOUNT_BYTES_PER_DAY']?.trim() || String(12 * 1024 * 1024 * 1024),
   ),
 
+  /** Student download-link requests per account and day. Bounds egress cost. */
+  accountDownloadsPerDay: optionalInt('ACCOUNT_DOWNLOADS_PER_DAY', 40),
+
+  /** Shared secret for the scheduled cleanup call. Empty disables the endpoint. */
+  cleanupToken: process.env['CLEANUP_TOKEN']?.trim() ?? '',
+
   /** Origins allowed to call the API and upload. */
   allowedOrigins: (process.env['ALLOWED_ORIGINS'] ?? '')
     .split(',')
