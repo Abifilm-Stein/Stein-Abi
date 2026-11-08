@@ -35,8 +35,8 @@ export const MAX_IMAGE_BYTES = 50 * 1024 * 1024; // 50 MB
 export const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024; // 2 GB
 export const MAX_FILES_PER_SUBMISSION = 30;
 
-/** Simultaneous transfers. Above ~3 the per-file rate collapses on mobile. */
-export const MAX_CONCURRENT_UPLOADS = 3;
+/** Simultaneous transfers. Kept low: phone connections drop more often with more parallel streams. */
+export const MAX_CONCURRENT_UPLOADS = 2;
 
 /** Retries per file on network errors, with exponential backoff. */
 export const MAX_UPLOAD_RETRIES = 3;

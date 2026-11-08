@@ -17,6 +17,27 @@ import {
  */
 const CHUNK_SIZE = 6 * 1024 * 1024;
 
+/** Quiet in-chunk retries before the queue's own retry/backoff takes over. */
+const CHUNK_RETRIES = 4;
+
+/** A connection-level failure: worth resuming from the stored offset. */
+class TransientNetworkError extends Error {}
+
+function pause(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) return reject(new UploadAbortedError());
+    const timer = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        reject(new UploadAbortedError());
+      },
+      { once: true },
+    );
+  });
+}
+
 /**
  * Resumable upload straight to Google Cloud Storage.
  *
@@ -80,6 +101,8 @@ export class GcsUploadTarget implements UploadTarget {
     // rejects those before they get here, but be explicit.
     if (file.size === 0) throw new UploadRejectedError('Die Datei ist leer.');
 
+    let failures = 0;
+
     while (offset < file.size) {
       if (signal.aborted) throw new UploadAbortedError();
 
@@ -87,23 +110,44 @@ export class GcsUploadTarget implements UploadTarget {
       const chunkStart = offset;
       const startedAt = performance.now();
 
-      const result = await this.putChunk(
-        sessionUri,
-        file.slice(chunkStart, end),
-        chunkStart,
-        end - 1,
-        file.size,
-        signal,
-        trackXhr,
-        (bytesInChunk) => {
-          const seconds = (performance.now() - startedAt) / 1000;
-          request.onProgress({
-            bytesSent: chunkStart + bytesInChunk,
-            bytesTotal: file.size,
-            bytesPerSecond: seconds > 0.2 ? bytesInChunk / seconds : 0,
-          });
-        },
-      );
+      let result: { complete: boolean; nextOffset: number };
+      try {
+        // Read the bytes into memory first. Handing a lazily read slice of a
+        // picked file to XHR is unreliable on Android and shows up as random
+        // network errors.
+        const bytes = await file.slice(chunkStart, end).arrayBuffer();
+
+        result = await this.putChunk(
+          sessionUri,
+          bytes,
+          chunkStart,
+          end - 1,
+          file.size,
+          signal,
+          trackXhr,
+          (bytesInChunk) => {
+            const seconds = (performance.now() - startedAt) / 1000;
+            request.onProgress({
+              bytesSent: chunkStart + bytesInChunk,
+              bytesTotal: file.size,
+              bytesPerSecond: seconds > 0.2 ? bytesInChunk / seconds : 0,
+            });
+          },
+        );
+      } catch (error) {
+        // Phones drop connections constantly. Ask Google how much it already
+        // has and carry on from there instead of failing the file.
+        if (!(error instanceof TransientNetworkError) || failures >= CHUNK_RETRIES) throw error;
+        failures++;
+        await pause(500 * 2 ** (failures - 1), signal);
+        const stored = await this.queryOffset(sessionUri, file.size, signal).catch(() => undefined);
+        if (stored === undefined) throw error;
+        offset = Math.min(stored, file.size);
+        if (offset >= file.size) return { storagePath: objectNameFrom(sessionUri) };
+        continue;
+      }
+
+      failures = 0;
 
       if (result.complete) {
         request.onProgress({
@@ -201,7 +245,7 @@ export class GcsUploadTarget implements UploadTarget {
    */
   private putChunk(
     sessionUri: string,
-    chunk: Blob,
+    chunk: ArrayBuffer,
     start: number,
     end: number,
     total: number,
@@ -255,11 +299,11 @@ export class GcsUploadTarget implements UploadTarget {
 
       xhr.onerror = () => {
         cleanup();
-        reject(new Error('Netzwerkfehler bei der Übertragung.'));
+        reject(new TransientNetworkError('Netzwerkfehler bei der Übertragung.'));
       };
       xhr.ontimeout = () => {
         cleanup();
-        reject(new Error('Zeitüberschreitung bei der Übertragung.'));
+        reject(new TransientNetworkError('Zeitüberschreitung bei der Übertragung.'));
       };
       xhr.onabort = () => {
         cleanup();
