@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ABI_YEAR, CONTACT, LEGAL, LEGAL_INCOMPLETE, SCHOOL_NAME } from '../../core/config';
+import { ABI_YEAR, CONTACT, LEGAL_INCOMPLETE, SCHOOL_NAME } from '../../core/config';
 
 /**
  * Mandatory in Germany under § 5 DDG (formerly § 5 TMG). The provider details
@@ -50,19 +50,18 @@ import { ABI_YEAR, CONTACT, LEGAL, LEGAL_INCOMPLETE, SCHOOL_NAME } from '../../c
       </section>
 
       <section class="mb-8">
-        <h2 class="mb-2 text-xl font-bold">Art des Angebots und Bezug zur Schule</h2>
+        <h2 class="mb-2 text-xl font-bold">Art des Angebots</h2>
         <p class="mb-2 text-muted">
           Nicht kommerzielles, zeitlich befristetes Projekt des Abiturjahrgangs
           {{ abiYear }} am {{ schoolName }}. Das Angebot dient dem Sammeln von Fotos und
-          Videos für den Abifilm und richtet sich ausschließlich an Angehörige der Schule. Es
+          Videos für den Abifilm und richtet sich ausschließlich an den Jahrgang. Es
           ist nicht für die allgemeine Öffentlichkeit bestimmt. Es werden keine Einnahmen
           erzielt, es gibt keine Werbung.
         </p>
         <p class="text-muted">
-          Schule: {{ schoolName }}, {{ legal.schoolAddress }}<br />
-          Schulleitung: {{ legal.headteacher }}<br />
-          Das Projekt wird von Schülerinnen und Schülern des Jahrgangs betrieben und ist keine
-          offizielle Seite der Schule oder der Schulverwaltung.
+          Das Projekt ist privat und wird von Schülerinnen und Schülern des Jahrgangs betrieben.
+          Es ist keine offizielle Seite der Schule oder der Schulverwaltung, und die Schule
+          ist für den Inhalt nicht verantwortlich.
         </p>
       </section>
 
@@ -110,7 +109,6 @@ import { ABI_YEAR, CONTACT, LEGAL, LEGAL_INCOMPLETE, SCHOOL_NAME } from '../../c
 })
 export class Imprint {
   protected readonly contact = CONTACT;
-  protected readonly legal = LEGAL;
   protected readonly incomplete = LEGAL_INCOMPLETE;
   protected readonly schoolName = SCHOOL_NAME;
   protected readonly abiYear = ABI_YEAR;

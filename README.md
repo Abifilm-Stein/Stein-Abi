@@ -199,7 +199,7 @@ die Upload-Chunks.
 ## Offene Punkte vor dem Livegang
 
 - [ ] Alle `⟨Platzhalter⟩` in `core/config.ts`, `/impressum`, `/datenschutz` ersetzen
-- [ ] Datenschutzerklärung und Impressum von Schulleitung und Datenschutzbeauftragten
+- [ ] Datenschutzerklärung und Impressum rechtlich prüfen lassen (privates Projekt, ohne Schule)
       freigeben lassen — der Entwurf ist **nicht juristisch geprüft**
 - [x] Einsendeschluss: 31.12.2026
 - [ ] Echte Team-Authentifizierung über IAP; der Demo-Login ist ein Platzhalter

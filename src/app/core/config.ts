@@ -21,21 +21,19 @@ export const RETENTION_MONTHS = 6;
 
 /** TODO: replace with the responsible person's details before going live. */
 export const CONTACT = {
-  name: '⟨Vorname Nachname⟩',
+  name: 'Olivier Chodura',
   role: 'Abifilm-Team, Jahrgang ' + ABI_YEAR,
   email: 'abifilm@steinabi.com',
-  postal: '⟨Straße Hausnummer, PLZ Ort⟩',
+  postal: 'Legdenweg 114, 48161 Münster',
 } as const;
 
 /**
- * School-side details the privacy statement and imprint need. Only the school
- * can supply these; nothing here is a guess.
+ * Further details for the privacy statement. The project is private and has no
+ * connection to the school's administration, so there is no school contact.
  */
 export const LEGAL = {
-  schoolAddress: '⟨Straße Hausnummer, PLZ Ort der Schule⟩',
-  headteacher: '⟨Name der Schulleitung⟩',
-  dataProtectionOfficer: '⟨Name und Kontakt der oder des Datenschutzbeauftragten⟩',
-  supervisoryAuthority: '⟨Landesbeauftragte für Datenschutz und Informationsfreiheit, Bundesland⟩',
+  supervisoryAuthority:
+    'Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Kavalleriestraße 2-4, 40213 Düsseldorf',
   screening: '⟨Wie der Film gezeigt wird, z. B. bei der Abiturfeier und für den Jahrgang⟩',
 } as const;
 

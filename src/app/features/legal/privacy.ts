@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  ABI_YEAR,
   CONSENT_VERSION,
   CONTACT,
   LEGAL,
@@ -32,8 +33,7 @@ import {
       @if (incomplete) {
         <div class="card mb-8 border-warn p-4 text-sm" style="color: var(--warn)">
           <strong>Hinweis für das Projektteam:</strong> Dieser Text ist ein vollständiger
-          Entwurf, aber noch nicht juristisch geprüft. Vor dem Livegang von Schulleitung und
-          Datenschutzbeauftragten freigeben lassen und alle ⟨Platzhalter⟩ in
+          Entwurf, aber noch nicht juristisch geprüft. Vor dem Livegang rechtlich prüfen lassen und alle ⟨Platzhalter⟩ in
           <code>core/config.ts</code> ersetzen. Dieser Hinweis verschwindet dann von selbst.
         </div>
       }
@@ -61,16 +61,22 @@ import {
           }}</a>
         </p>
         <p class="mt-2 text-muted">
-          Das Projekt findet am {{ schoolName }}, {{ legal.schoolAddress }}, statt.
-          Schulleitung: {{ legal.headteacher }}.
+          Das Projekt ist ein privates Projekt des Abiturjahrgangs {{ abiYear }} am
+          {{ schoolName }}. Die Schule ist weder Betreiberin noch Verantwortliche und hat
+          keinen Zugriff auf die Daten.
         </p>
       </section>
 
       <section class="mb-8">
-        <h2 class="mb-2 text-xl font-bold">2. Datenschutzbeauftragte(r)</h2>
+        <h2 class="mb-2 text-xl font-bold">2. Ansprechperson für Datenschutz</h2>
         <p class="text-muted">
-          Die oder der Datenschutzbeauftragte der Schule erreichst du unter:
-          {{ legal.dataProtectionOfficer }}.
+          Eine Datenschutzbeauftragte oder ein Datenschutzbeauftragter ist für dieses
+          Projekt nicht benannt. Bei allen Fragen zum Datenschutz erreichst du die
+          verantwortliche Person unter
+          <a [href]="'mailto:' + contact.email" class="text-primary-ink underline">{{
+            contact.email
+          }}</a
+          >.
         </p>
       </section>
 
@@ -340,6 +346,7 @@ export class Privacy {
   protected readonly legal = LEGAL;
   protected readonly incomplete = LEGAL_INCOMPLETE;
   protected readonly schoolName = SCHOOL_NAME;
+  protected readonly abiYear = ABI_YEAR;
   protected readonly retentionMonths = RETENTION_MONTHS;
   protected readonly consentVersion = CONSENT_VERSION;
 }
