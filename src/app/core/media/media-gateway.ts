@@ -35,6 +35,7 @@ export abstract class MediaGateway {
   abstract adminSignedUrl(mediaId: string): Promise<string>;
   abstract setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void>;
   abstract listAccounts(): Promise<AccountSummary[]>;
+  abstract resetCode(accountId: string): Promise<string>;
   abstract listWithdrawals(): Promise<WithdrawalRequest[]>;
   abstract resolveWithdrawal(
     requestId: string,
@@ -137,6 +138,17 @@ export class HttpMediaGateway implements MediaGateway {
         headers: this.teamHeaders(),
       }),
     );
+  }
+
+  async resetCode(accountId: string): Promise<string> {
+    const result = await firstValueFrom(
+      this.http.post<{ code: string }>(
+        `${this.base}/admin/accounts/${accountId}/reset-code`,
+        {},
+        { headers: this.teamHeaders() },
+      ),
+    );
+    return result.code;
   }
 
   listWithdrawals(): Promise<WithdrawalRequest[]> {
@@ -255,6 +267,10 @@ export class LocalMediaGateway implements MediaGateway {
 
   async listAccounts(): Promise<AccountSummary[]> {
     return [];
+  }
+
+  async resetCode(): Promise<string> {
+    throw new Error('Im Demo-Modus gibt es keine Konten.');
   }
 
   async listWithdrawals(): Promise<WithdrawalRequest[]> {

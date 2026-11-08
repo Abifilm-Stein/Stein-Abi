@@ -11,35 +11,9 @@
  * is the intended trade-off -- a database that can reveal the codes is a
  * database that leaks them.
  */
-import { randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { collections, nowIso, type UserDoc } from './db.js';
-import { hashCode } from './session.js';
-
-const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTVWXYZ23456789';
-const CODE_LENGTH = 12;
-
-/**
- * Uniform random code. Rejection sampling, not modulo: a plain modulo would
- * bias towards the start of the alphabet.
- */
-function generateCode(): string {
-  const limit = Math.floor(256 / CODE_ALPHABET.length) * CODE_ALPHABET.length;
-  const chars: string[] = [];
-
-  while (chars.length < CODE_LENGTH) {
-    for (const byte of randomBytes(CODE_LENGTH)) {
-      if (chars.length >= CODE_LENGTH) break;
-      if (byte < limit) chars.push(CODE_ALPHABET[byte % CODE_ALPHABET.length]!);
-    }
-  }
-
-  return chars.join('');
-}
-
-function group(code: string): string {
-  return `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`;
-}
+import { formatCode, generateCode, hashCode } from './session.js';
 
 async function main(): Promise<void> {
   const lines = createInterface({ input: process.stdin, crlfDelay: Infinity });
@@ -70,7 +44,7 @@ async function main(): Promise<void> {
     };
 
     await collections.users.add(user);
-    console.log(`${name};${schoolClass};${group(code)}`);
+    console.log(`${name};${schoolClass};${formatCode(code)}`);
     created++;
   }
 

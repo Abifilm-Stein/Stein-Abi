@@ -17,7 +17,7 @@ import {
   signedUrlFor,
   type MediaDoc,
 } from './media.js';
-import { hashIp, issueToken, readTeamToken, readToken, signIn, signInTeam, type Session } from './session.js';
+import { formatCode, generateCode, hashCode, hashIp, issueToken, readTeamToken, readToken, signIn, signInTeam, type Session } from './session.js';
 
 const CONSENT_VERSION = '2026-09-10';
 
@@ -387,6 +387,21 @@ app.get('/admin/accounts', requireTeam, async (c) => {
       })
       .sort((a, b) => a.name.localeCompare(b.name, 'de')),
   );
+});
+
+/**
+ * Issue a new code for one account, for when a printed one is lost or does not
+ * work. The old code stops working at once. The new code is returned exactly
+ * once and only its hash is stored.
+ */
+app.post('/admin/accounts/:id/reset-code', requireTeam, async (c) => {
+  const ref = collections.users.doc(c.req.param('id'));
+  const snapshot = await ref.get();
+  if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);
+
+  const code = generateCode();
+  await ref.update({ codeHash: await hashCode(code), codeHint: code.slice(0, 4), revoked: false });
+  return c.json({ code: formatCode(code) });
 });
 
 /** Same as the student endpoint, but without the ownership restriction. */

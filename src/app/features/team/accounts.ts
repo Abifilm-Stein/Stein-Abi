@@ -64,6 +64,22 @@ type Filter = 'alle' | 'nie' | 'ohne' | 'mit';
       </div>
     </div>
 
+    @if (issued(); as code) {
+      <div class="card mb-6 border-warn p-4" role="status">
+        <p class="text-sm">
+          Neuer Code für <strong>{{ code.name }}</strong
+          >. Er wird nur jetzt angezeigt. Der alte Code gilt nicht mehr.
+        </p>
+        <p class="mt-2 font-mono text-2xl font-bold tracking-widest">{{ code.value }}</p>
+        <button type="button" class="btn btn-ghost btn-sm mt-3" (click)="issued.set(null)">
+          Notiert, schließen
+        </button>
+      </div>
+    }
+    @if (resetError()) {
+      <p class="card mb-6 p-4 text-sm" role="alert">{{ resetError() }}</p>
+    }
+
     @if (loading()) {
       <div class="card h-32 animate-pulse p-4"></div>
     } @else if (failed()) {
@@ -79,6 +95,7 @@ type Filter = 'alle' | 'nie' | 'ohne' | 'mit';
               <th class="p-3">Fotos</th>
               <th class="p-3">Videos</th>
               <th class="p-3">Volumen</th>
+              <th class="p-3"><span class="sr-only">Aktion</span></th>
             </tr>
           </thead>
           <tbody>
@@ -104,10 +121,15 @@ type Filter = 'alle' | 'nie' | 'ohne' | 'mit';
                 <td class="p-3">{{ a.photos }}</td>
                 <td class="p-3">{{ a.videos }}</td>
                 <td class="p-3">{{ bytes(a.bytes) }}</td>
+                <td class="p-3">
+                  <button type="button" class="btn btn-ghost btn-sm" (click)="reset(a)">
+                    Neuer Code
+                  </button>
+                </td>
               </tr>
             } @empty {
               <tr>
-                <td class="p-6 text-center text-muted" colspan="6">Nichts gefunden</td>
+                <td class="p-6 text-center text-muted" colspan="7">Nichts gefunden</td>
               </tr>
             }
           </tbody>
@@ -125,6 +147,8 @@ export class Accounts implements OnInit {
   protected readonly filter = signal<Filter>('alle');
   protected readonly search = signal('');
   protected readonly bytes = formatBytes;
+  protected readonly issued = signal<{ name: string; value: string } | null>(null);
+  protected readonly resetError = signal<string | null>(null);
 
   protected readonly signedIn = computed(() => this.accounts().filter((a) => a.lastSeenAt).length);
   protected readonly uploaders = computed(
@@ -160,6 +184,18 @@ export class Accounts implements OnInit {
       this.failed.set(true);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  protected async reset(account: AccountSummary): Promise<void> {
+    if (!confirm(`Neuen Code für ${account.name} vergeben? Der alte Code funktioniert danach nicht mehr.`)) {
+      return;
+    }
+    this.resetError.set(null);
+    try {
+      this.issued.set({ name: account.name, value: await this.gateway.resetCode(account.id) });
+    } catch {
+      this.resetError.set('Der Code konnte nicht erneuert werden.');
     }
   }
 

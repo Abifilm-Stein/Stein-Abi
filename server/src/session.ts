@@ -37,6 +37,29 @@ export function isValidCode(input: string): boolean {
  * glibc/musl trap at runtime. For a 12-character code from a 30-symbol
  * alphabet (~59 bits) combined with per-IP rate limiting, scrypt is ample.
  */
+/**
+ * Uniform random code. Rejection sampling, not modulo: a plain modulo would
+ * bias towards the start of the alphabet.
+ */
+export function generateCode(): string {
+  const limit = Math.floor(256 / CODE_ALPHABET.length) * CODE_ALPHABET.length;
+  const chars: string[] = [];
+
+  while (chars.length < CODE_LENGTH) {
+    for (const byte of randomBytes(CODE_LENGTH)) {
+      if (chars.length >= CODE_LENGTH) break;
+      if (byte < limit) chars.push(CODE_ALPHABET[byte % CODE_ALPHABET.length]!);
+    }
+  }
+
+  return chars.join('');
+}
+
+/** `ABCD-EFGH-JKMN`, the form printed and typed. */
+export function formatCode(code: string): string {
+  return `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8, 12)}`;
+}
+
 export async function hashCode(code: string): Promise<string> {
   const salt = randomBytes(16);
   const key = await scryptAsync(canonicaliseCode(code), salt, KEY_LENGTH);
