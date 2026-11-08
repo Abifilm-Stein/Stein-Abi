@@ -94,3 +94,18 @@ export interface WithdrawalRequest {
   resolvedAt?: string;
   resolutionNote?: string;
 }
+
+/** One row of the team's account overview. */
+export interface AccountSummary {
+  id: string;
+  name: string;
+  schoolClass: string;
+  codeHint: string;
+  revoked: boolean;
+  createdAt: string;
+  /** null = has never signed in. */
+  lastSeenAt: string | null;
+  photos: number;
+  videos: number;
+  bytes: number;
+}

@@ -4,7 +4,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { SessionService } from '../account/session.service';
 import { CONSENT_VERSION } from '../config';
-import { MediaDraft, MediaItem, ReviewStatus, WithdrawalRequest, WithdrawalStatus } from '../models';
+import { AccountSummary, MediaDraft, MediaItem, ReviewStatus, WithdrawalRequest, WithdrawalStatus } from '../models';
 import { runtimeConfig } from '../runtime-config';
 
 /**
@@ -34,6 +34,7 @@ export abstract class MediaGateway {
   abstract listAll(): Promise<MediaItem[]>;
   abstract adminSignedUrl(mediaId: string): Promise<string>;
   abstract setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void>;
+  abstract listAccounts(): Promise<AccountSummary[]>;
   abstract listWithdrawals(): Promise<WithdrawalRequest[]>;
   abstract resolveWithdrawal(
     requestId: string,
@@ -127,6 +128,14 @@ export class HttpMediaGateway implements MediaGateway {
         { reviewStatus: status },
         { headers: this.teamHeaders() },
       ),
+    );
+  }
+
+  listAccounts(): Promise<AccountSummary[]> {
+    return firstValueFrom(
+      this.http.get<AccountSummary[]>(`${this.base}/admin/accounts`, {
+        headers: this.teamHeaders(),
+      }),
     );
   }
 
@@ -242,6 +251,10 @@ export class LocalMediaGateway implements MediaGateway {
     this.write(
       this.read().map((item) => (item.id === mediaId ? { ...item, reviewStatus: status } : item)),
     );
+  }
+
+  async listAccounts(): Promise<AccountSummary[]> {
+    return [];
   }
 
   async listWithdrawals(): Promise<WithdrawalRequest[]> {

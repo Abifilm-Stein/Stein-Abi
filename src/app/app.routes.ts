@@ -62,6 +62,12 @@ export const routes: Routes = [
     loadComponent: () => import('./features/team/team-dashboard').then((m) => m.TeamDashboard),
   },
   {
+    path: 'team/konten',
+    title: 'Konten' + SUFFIX,
+    canActivate: [teamGuard],
+    loadComponent: () => import('./features/team/accounts').then((m) => m.Accounts),
+  },
+  {
     path: 'team/rueckzuege',
     title: 'Rückzugsanträge' + SUFFIX,
     canActivate: [teamGuard],

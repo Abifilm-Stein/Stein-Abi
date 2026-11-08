@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { createMiddleware } from 'hono/factory';
 import { z } from 'zod';
-import { collections, consumeQuotas, db, nowIso, type WithdrawalDoc } from './db.js';
+import { collections, consumeQuotas, db, nowIso, type UserDoc, type WithdrawalDoc } from './db.js';
 import { env } from './env.js';
 import {
   confirmUpload,
@@ -346,6 +346,47 @@ app.delete('/withdrawals/mine/:id', requireSession, async (c) => {
 app.get('/admin/media', requireTeam, async (c) => {
   const snapshot = await collections.media.orderBy('createdAt', 'desc').limit(1000).get();
   return c.json(snapshot.docs.map((doc) => ({ id: doc.id, ...(doc.data() as MediaDoc) })));
+});
+
+/**
+ * Account overview for the team: who exists, who has signed in, who uploaded
+ * what. Never returns the code hash. One pass over users and media, fine at
+ * year-group scale (hundreds of rows).
+ */
+app.get('/admin/accounts', requireTeam, async (c) => {
+  const [users, media] = await Promise.all([
+    collections.users.limit(2000).get(),
+    collections.media.select('userId', 'type', 'fileSize').limit(20000).get(),
+  ]);
+
+  const totals = new Map<string, { photos: number; videos: number; bytes: number }>();
+  for (const doc of media.docs) {
+    const { userId, type, fileSize } = doc.data() as Pick<MediaDoc, 'userId' | 'type' | 'fileSize'>;
+    const sum = totals.get(userId) ?? { photos: 0, videos: 0, bytes: 0 };
+    if (type === 'video') sum.videos++;
+    else sum.photos++;
+    sum.bytes += fileSize ?? 0;
+    totals.set(userId, sum);
+  }
+
+  return c.json(
+    users.docs
+      .map((doc) => {
+        const user = doc.data() as UserDoc;
+        const created = user.createdAt;
+        return {
+          id: doc.id,
+          name: user.username,
+          schoolClass: user.schoolClass ?? '',
+          codeHint: user.codeHint ?? '',
+          revoked: user.revoked === true,
+          createdAt: typeof created === 'string' ? created : created?.toDate().toISOString() ?? '',
+          lastSeenAt: user.lastSeenAt ?? null,
+          ...(totals.get(doc.id) ?? { photos: 0, videos: 0, bytes: 0 }),
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'de')),
+  );
 });
 
 /** Same as the student endpoint, but without the ownership restriction. */

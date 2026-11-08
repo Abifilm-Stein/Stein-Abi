@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../core/auth/auth.service';
 import { CATEGORIES, gradeLabel } from '../../core/config';
 import { MediaGateway } from '../../core/media/media-gateway';
@@ -19,6 +19,7 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
         <p class="text-muted">{{ items().length }} insgesamt</p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
+        <a routerLink="/team/konten" class="btn btn-ghost btn-sm">Konten</a>
         <a routerLink="/team/rueckzuege" class="btn btn-ghost btn-sm">
           Rückzugsanträge
           @if (openWithdrawals() > 0) {
@@ -188,6 +189,7 @@ export class TeamDashboard implements OnInit {
   private readonly gateway = inject(MediaGateway);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly categories = CATEGORIES;
   protected readonly gradeLabel = gradeLabel;
@@ -230,6 +232,7 @@ export class TeamDashboard implements OnInit {
   );
 
   ngOnInit(): void {
+    this.searchFilter.set(this.route.snapshot.queryParamMap.get('suche') ?? '');
     void this.load();
   }
 
