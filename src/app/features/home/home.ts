@@ -11,15 +11,15 @@ const WANTED = [
   },
   {
     title: 'Alltag und Quatsch',
-    text: 'Freistunden, Busfahrten, Unfug im Unterricht. Genau das erkennt später jeder wieder.',
+    text: 'Freistunden, Busfahrten, Ärger im Unterricht. Genau das erkennt später jeder wieder.',
   },
   {
     title: 'Quer und hochkant',
     text: 'Beides ist brauchbar. Hochkant lässt sich im Schnitt verwenden, also lieber mitschicken.',
   },
   {
-    title: 'Alte Fundstücke',
-    text: 'Klassenfahrten, Ausflüge, Schulfeste von früher. Scroll mal ganz weit nach unten in deiner Galerie.',
+    title: 'Alte Dateien',
+    text: 'Klassenfahrten, Ausflüge, Schulfeste von früher.',
   },
 ];
 
