@@ -56,6 +56,8 @@ export interface MediaItem extends MediaMetadata {
   uploaderClass: string;
   /** Which version of the consent wording was actually agreed to. */
   consentVersion: string;
+  /** When both consents were given (server time, ISO 8601, UTC). */
+  consentAt?: string;
   reviewStatus: ReviewStatus;
   openWithdrawal?: OpenWithdrawal | null;
 }

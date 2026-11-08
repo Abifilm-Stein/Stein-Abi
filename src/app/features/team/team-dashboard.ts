@@ -149,7 +149,7 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                     >
                   }
                   <span class="rounded bg-surface px-2 py-0.5">
-                    Einwilligung {{ item.consentVersion }}
+                    Einwilligung {{ item.consentVersion }}{{ consentTime(item) }}
                   </span>
                 </p>
               </div>
@@ -252,6 +252,17 @@ export class TeamDashboard implements OnInit {
 
   protected countByStatus(status: ReviewStatus): number {
     return this.items().filter((item) => item.reviewStatus === status).length;
+  }
+
+  protected consentTime(item: MediaItem): string {
+    if (!item.consentAt) return '';
+    return (
+      ', ' +
+      new Date(item.consentAt).toLocaleString('de-DE', {
+        dateStyle: 'short',
+        timeStyle: 'medium',
+      })
+    );
   }
 
   protected bytes(value: number): string {

@@ -72,6 +72,8 @@ export interface MediaDoc {
   consentPersons: boolean;
   consentPrivacy: boolean;
   consentVersion: string;
+  /** Server time (ISO 8601, UTC) at which both consents were given. */
+  consentAt: string;
   reviewStatus: ReviewStatus;
   openWithdrawal?: OpenWithdrawal | null;
 }
@@ -265,6 +267,9 @@ export async function confirmUpload(input: ConfirmInput): Promise<{ id: string; 
     consentPersons: true,
     consentPrivacy: true,
     consentVersion: input.consentVersion,
+    // Server clock, not the browser's: the browser clock is user controlled and
+    // would not hold up as evidence of when consent was given.
+    consentAt: new Date().toISOString(),
     reviewStatus: 'neu' as ReviewStatus,
     openWithdrawal: null,
   };

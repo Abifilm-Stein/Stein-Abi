@@ -19,7 +19,8 @@ import {
 } from './media.js';
 import { formatCode, generateCode, hashCode, hashIp, issueToken, readTeamToken, readToken, signIn, signInTeam, type Session } from './session.js';
 
-const CONSENT_VERSION = '2026-09-10';
+/** Keep in sync with CONSENT_VERSION in src/app/core/config.ts. */
+const CONSENT_VERSION = '2026-11-08';
 
 type Vars = { session: Session };
 const app = new Hono<{ Variables: Vars }>();
