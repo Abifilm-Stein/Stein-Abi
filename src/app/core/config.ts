@@ -14,7 +14,7 @@ export const SUBMISSION_DEADLINE = new Date('2026-12-31T23:59:59+01:00');
  * wording in `/datenschutz` changes -- it is stored per submission so an
  * existing consent can always be traced back to what was actually agreed to.
  */
-export const CONSENT_VERSION = '2026-09-10';
+export const CONSENT_VERSION = '2026-11-08';
 
 /** Months after the graduation ceremony when all material is deleted. */
 export const RETENTION_MONTHS = 6;
@@ -23,9 +23,26 @@ export const RETENTION_MONTHS = 6;
 export const CONTACT = {
   name: '⟨Vorname Nachname⟩',
   role: 'Abifilm-Team, Jahrgang ' + ABI_YEAR,
-  email: '⟨abifilm@example.de⟩',
+  email: 'abifilm@steinabi.com',
   postal: '⟨Straße Hausnummer, PLZ Ort⟩',
 } as const;
+
+/**
+ * School-side details the privacy statement and imprint need. Only the school
+ * can supply these; nothing here is a guess.
+ */
+export const LEGAL = {
+  schoolAddress: '⟨Straße Hausnummer, PLZ Ort der Schule⟩',
+  headteacher: '⟨Name der Schulleitung⟩',
+  dataProtectionOfficer: '⟨Name und Kontakt der oder des Datenschutzbeauftragten⟩',
+  supervisoryAuthority: '⟨Landesbeauftragte für Datenschutz und Informationsfreiheit, Bundesland⟩',
+  screening: '⟨Wie der Film gezeigt wird, z. B. bei der Abiturfeier und für den Jahrgang⟩',
+} as const;
+
+/** True while any legal detail is still a placeholder. Drives the review banner. */
+export const LEGAL_INCOMPLETE = [...Object.values(CONTACT), ...Object.values(LEGAL)].some((value) =>
+  value.includes('⟨'),
+);
 
 /* -------------------------------------------------------------------------
  * Upload limits
