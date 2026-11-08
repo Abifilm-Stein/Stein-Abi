@@ -7,7 +7,7 @@ import { MediaGateway } from '../../core/media/media-gateway';
 const WANTED = [
   {
     title: 'Originaldateien',
-    text: 'Direkt vom Handy, nicht über WhatsApp weitergeleitet — dort wird alles komprimiert.',
+    text: 'Direkt vom Handy, nicht über WhatsApp weitergeleitet. Dort wird alles komprimiert.',
   },
   {
     title: 'Auch Unspektakuläres',
@@ -39,7 +39,7 @@ const WANTED = [
       </h1>
 
       <p class="mb-8 max-w-2xl text-lg text-muted">
-        Neun Jahre {{ schoolName }} in einem Film — und dafür brauchen wir dein
+        Neun Jahre {{ schoolName }} in einem Film, und dafür brauchen wir dein
         Material. Hochladen dauert keine zwei Minuten, ein Konto brauchst du nicht.
       </p>
 
@@ -58,8 +58,8 @@ const WANTED = [
 
       @if (!session.isSignedIn()) {
         <p class="mt-4 max-w-2xl text-sm text-muted">
-          Du brauchst nur den persönlichen Code, den du vom Abifilm-Team bekommen hast —
-          kein Konto anlegen, keine E-Mail-Adresse.
+          Du brauchst nur den persönlichen Code, den du vom Abifilm-Team bekommen hast.
+          Kein Konto anlegen, keine E-Mail-Adresse.
         </p>
       }
 
@@ -87,7 +87,7 @@ const WANTED = [
     <section class="card p-5 sm:p-6" aria-labelledby="privacy-teaser">
       <h2 id="privacy-teaser" class="mb-3 text-xl font-bold">Was mit deinen Dateien passiert</h2>
       <ul class="space-y-2 text-sm text-muted">
-        <li>Nur das Abifilm-Team sieht die Uploads — nicht die ganze Stufe.</li>
+        <li>Nur das Abifilm-Team sieht die Uploads, nicht die ganze Stufe.</li>
         <li>Gespeichert wird ausschließlich auf Servern in der EU.</li>
         <li>Nach der Abiturfeier wird alles vollständig gelöscht.</li>
         <li>Du kannst deine Einwilligung jederzeit zurückziehen.</li>

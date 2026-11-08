@@ -59,7 +59,7 @@ export const CATEGORIES = [
   'Sportfest',
   'Unterricht',
   'Pausenhof',
-  'Klassenfahrt Stufe 5–10',
+  'Klassenfahrt Stufe 5 bis 10',
   'Abistreich',
   'Motto-Woche',
   'Karneval',

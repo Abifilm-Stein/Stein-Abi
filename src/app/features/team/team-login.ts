@@ -56,7 +56,7 @@ import { isDemoMode } from '../../core/runtime-config';
           <strong>Demo-Modus.</strong> Anmeldung mit
           <span class="font-mono">team</span> /
           <span class="font-mono">abifilm</span>. Die Prüfung läuft im Browser und ist
-          <strong>keine Sicherheitsmaßnahme</strong> — produktiv muss der Server die Sitzung
+          <strong>keine Sicherheitsmaßnahme</strong>, produktiv muss der Server die Sitzung
           ausgeben und die Rolle bei jedem Zugriff durchsetzen.
         </p>
       }

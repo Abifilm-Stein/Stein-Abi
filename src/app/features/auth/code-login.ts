@@ -11,7 +11,7 @@ import { isDemoMode } from '../../core/runtime-config';
       <h1 class="mb-1 text-2xl font-bold">Anmelden</h1>
       <p class="mb-6 text-sm text-muted">
         Gib den persönlichen Code ein, den du vom Abifilm-Team bekommen hast. Ein Konto musst
-        du nicht anlegen — der Code ist deine Anmeldung.
+        du nicht anlegen, der Code ist deine Anmeldung.
       </p>
 
       <!-- Native (submit), not (ngSubmit): this component holds its state in
@@ -80,7 +80,7 @@ import { isDemoMode } from '../../core/runtime-config';
         <div class="mt-5 rounded-lg bg-warn-soft p-3 text-xs" style="color: var(--warn)">
           <p class="mb-2">
             <strong>Demo-Modus.</strong> Diese Codes funktionieren. Die Prüfung läuft im
-            Browser und ist <strong>keine Sicherheitsmaßnahme</strong> — produktiv vergleicht
+            Browser und ist <strong>keine Sicherheitsmaßnahme</strong>, produktiv vergleicht
             der Server den Hash und begrenzt Versuche.
           </p>
           <ul class="space-y-1">
@@ -93,7 +93,7 @@ import { isDemoMode } from '../../core/runtime-config';
                 >
                   {{ entry.code }}
                 </button>
-                — {{ entry.name }}
+                ({{ entry.name }})
               </li>
             }
           </ul>

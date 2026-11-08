@@ -19,7 +19,7 @@ import { WITHDRAWAL_STATUS_LABELS, WithdrawalRequest } from '../../core/models';
       <p class="mb-1 font-bold">Ein Rückzug kann nicht abgelehnt werden.</p>
       <p>
         Eine Einwilligung darf nach Art. 7 Abs. 3 DSGVO jederzeit zurückgezogen werden.
-        Dieser Bereich dient dazu, die Entfernung zu koordinieren — nicht dazu, über sie zu
+        Dieser Bereich dient dazu, die Entfernung zu koordinieren, nicht dazu, über sie zu
         entscheiden. Bis ein Antrag erledigt ist, darf die Datei
         <strong>nicht weiter im Film verwendet</strong> werden. „Zurückgenommen“ ist nur
         zulässig, wenn die Person selbst zugestimmt hat, die Datei doch zu behalten.

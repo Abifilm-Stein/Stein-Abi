@@ -67,7 +67,7 @@ import { CONSENT_VERSION, CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../c
           lässt sich der Code nicht zurückrechnen.
         </p>
         <p class="text-muted">
-          Über den Code sehen wir, welche Beiträge zu dir gehören — das ist die Grundlage
+          Über den Code sehen wir, welche Beiträge zu dir gehören. Das ist die Grundlage
           dafür, dass du sie unter „Meine Beiträge“ einsehen und selbst zurückziehen kannst.
           Andere Personen können deine Beiträge nicht sehen. Gib deinen Code niemandem
           weiter, und melde dich an fremden Geräten wieder ab.
@@ -84,7 +84,7 @@ import { CONSENT_VERSION, CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../c
         <p class="text-muted">
           Auf Aufnahmen sind regelmäßig weitere Personen erkennbar. Deren Einwilligung
           bestätigst du beim Upload. Für Personen unter 16 Jahren ist zusätzlich die
-          Einwilligung der Erziehungsberechtigten erforderlich (Art. 8 DSGVO) — dafür gibt es
+          Einwilligung der Erziehungsberechtigten erforderlich (Art. 8 DSGVO). Dafür gibt es
           einen
           <a routerLink="/einwilligung" class="text-primary-ink underline"
             >Vordruck zum Ausdrucken</a
@@ -97,7 +97,7 @@ import { CONSENT_VERSION, CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../c
         <p class="text-muted">
           Zugriff hat ausschließlich das namentlich benannte Abifilm-Team des Jahrgangs. Die
           Uploads sind untereinander nicht sichtbar: Unter „Meine Beiträge“ siehst du nur,
-          was du selbst hochgeladen hast — das wird nicht nur in der Website, sondern in der
+          was du selbst hochgeladen hast. Das wird nicht nur in der Website, sondern in der
           Datenbank selbst durchgesetzt. Eine Weitergabe an Dritte findet nicht statt.
         </p>
       </section>
@@ -142,8 +142,8 @@ import { CONSENT_VERSION, CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../c
           nimmt deshalb Kontakt mit dir auf und entfernt das Material anschließend.
           <strong class="text-ink">
             Ablehnen kann das Team einen Rückzug nicht
-          </strong>
-          — ab dem Antrag wird das Material nicht mehr weiterverwendet und danach
+          </strong
+          >. Ab dem Antrag wird das Material nicht mehr weiterverwendet und danach
           gelöscht.
         </p>
         <p class="text-muted">

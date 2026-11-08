@@ -135,7 +135,7 @@ import { formatBytes } from '../../core/upload/file-validation';
                 ></textarea>
                 <p class="mt-1.5 text-xs text-muted">
                   Die Datei wird nicht sofort gelöscht. Das Team nimmt Kontakt auf und
-                  entfernt sie dann — der Film ist unter Umständen schon darum herum
+                  entfernt sie dann. Der Film ist unter Umständen schon darum herum
                   geschnitten.
                 </p>
                 <div class="mt-3 flex flex-wrap gap-2">
@@ -166,14 +166,14 @@ import { formatBytes } from '../../core/upload/file-validation';
         <h2 class="mb-2 font-bold text-ink">Warum öffnet sich die Datei in einem neuen Tab?</h2>
         <p class="mb-3">
           Deine Dateien liegen nicht öffentlich im Netz. „Ansehen“ holt eine Adresse, die nur
-          für dich und nur für kurze Zeit gilt — danach läuft sie ab.
+          für dich und nur für kurze Zeit gilt. Danach läuft sie ab.
         </p>
         <h2 class="mb-2 font-bold text-ink">Und warum kann ich nicht direkt löschen?</h2>
         <p>
           Weil der Film zum Zeitpunkt deiner Anfrage schon um eine Aufnahme herum geschnitten
           sein kann. Ein Antrag stellt sicher, dass das Team es mitbekommt und mit dir
-          bespricht. <strong class="text-ink">Ablehnen kann es den Rückzug nicht</strong> —
-          deine Einwilligung darfst du jederzeit zurückziehen. Bei Problemen:
+          bespricht. <strong class="text-ink">Ablehnen kann es den Rückzug nicht</strong>.
+          Deine Einwilligung darfst du jederzeit zurückziehen. Bei Problemen:
           <a [href]="'mailto:' + contact.email" class="font-semibold text-primary-ink underline">{{
             contact.email
           }}</a>

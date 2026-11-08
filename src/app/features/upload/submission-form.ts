@@ -127,7 +127,7 @@ import { MediaMetadata } from '../../core/models';
       </fieldset>
 
       <p class="mt-5 text-xs text-muted">
-        Dein Material wird ausschließlich für den Abifilm verwendet — nicht für
+        Dein Material wird ausschließlich für den Abifilm verwendet, nicht für
         Abizeitung, Social Media oder andere Zwecke.
       </p>
 

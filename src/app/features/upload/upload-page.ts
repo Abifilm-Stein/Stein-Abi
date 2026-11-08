@@ -16,7 +16,7 @@ import { UploadRow } from './upload-row';
     @if (session.account(); as account) {
       <h1 class="mb-2 text-3xl font-bold sm:text-4xl">Material hochladen</h1>
       <p class="mb-8 max-w-2xl text-muted">
-        Originaldateien bitte, nicht per WhatsApp geschickte Versionen — die sind
+        Originaldateien bitte, nicht per WhatsApp geschickte Versionen. Die sind
         komprimiert und im Film unbrauchbar. Was du schon abgeschickt hast, findest du
         unter
         <a routerLink="/meine-beitraege" class="font-semibold text-primary-ink underline"
@@ -52,7 +52,7 @@ import { UploadRow } from './upload-row';
           </p>
           <ul class="space-y-1 text-sm text-muted">
             @for (rejection of rejections(); track rejection.name) {
-              <li><span class="font-semibold">{{ rejection.name }}</span> — {{ rejection.reason }}</li>
+              <li><span class="font-semibold">{{ rejection.name }}</span>: {{ rejection.reason }}</li>
             }
           </ul>
           <button type="button" class="btn btn-ghost btn-sm mt-3" (click)="rejections.set([])">
@@ -226,7 +226,7 @@ export class UploadPage implements OnInit {
       });
     } catch {
       this.saveError.set(
-        'Der Beitrag konnte nicht gespeichert werden. Die Dateien sind aber übertragen — bitte versuche es gleich noch einmal.',
+        'Der Beitrag konnte nicht gespeichert werden. Die Dateien sind aber übertragen. Bitte versuche es gleich noch einmal.',
       );
     } finally {
       this.saving.set(false);

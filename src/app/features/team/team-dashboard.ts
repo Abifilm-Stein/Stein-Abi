@@ -145,7 +145,7 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                     <span
                       class="rounded bg-warn-soft px-2 py-0.5 font-bold"
                       style="color: var(--warn)"
-                      >Rückzug beantragt — nicht verwenden</span
+                      >Rückzug beantragt: nicht verwenden</span
                     >
                   }
                   <span class="rounded bg-surface px-2 py-0.5">
