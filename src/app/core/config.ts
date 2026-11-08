@@ -14,7 +14,7 @@ export const SUBMISSION_DEADLINE = new Date('2026-12-31T23:59:59+01:00');
  * wording in `/datenschutz` changes -- it is stored per submission so an
  * existing consent can always be traced back to what was actually agreed to.
  */
-export const CONSENT_VERSION = '2026-11-08';
+export const CONSENT_VERSION = '2026-11-08-2';
 
 /** Months after the graduation ceremony when all material is deleted. */
 export const RETENTION_MONTHS = 6;
@@ -34,7 +34,7 @@ export const CONTACT = {
 export const LEGAL = {
   supervisoryAuthority:
     'Landesbeauftragte für Datenschutz und Informationsfreiheit Nordrhein-Westfalen, Kavalleriestraße 2-4, 40213 Düsseldorf',
-  screening: '⟨Wie der Film gezeigt wird, z. B. bei der Abiturfeier und für den Jahrgang⟩',
+  screening: 'Der fertige Film wird am Ende in der Aula vor der ganzen Schule vorgeführt',
 } as const;
 
 /** True while any legal detail is still a placeholder. Drives the review banner. */

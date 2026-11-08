@@ -82,7 +82,7 @@ import { MediaMetadata } from '../../core/models';
             class="field-input"
             rows="3"
             formControlName="description"
-            placeholder="z. B. „Busfahrt nach London, Herr ⟨Name⟩ schläft im Hintergrund“"
+            placeholder="z. B. „Busfahrt nach London, im Hintergrund schläft jemand“"
           ></textarea>
         </div>
       </div>
@@ -99,7 +99,7 @@ import { MediaMetadata } from '../../core/models';
             formControlName="consentPersons"
           />
           <span>
-            Alle erkennbaren Personen sind mit der Verwendung im Abifilm einverstanden.
+            Alle erkennbaren Personen sind damit einverstanden, dass die Aufnahmen im Abifilm verwendet werden, der in der Aula vor der ganzen Schule gezeigt wird.
           </span>
         </label>
 

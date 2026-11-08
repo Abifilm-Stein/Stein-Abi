@@ -39,7 +39,8 @@ import { CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../core/config';
 
         <p class="mb-6 text-sm">
           Der Abiturjahrgang erstellt einen Abschlussfilm. Dafür werden Fotos und Videos aus
-          der Schulzeit gesammelt, auf denen Schülerinnen und Schüler erkennbar sind. Die
+          der Schulzeit gesammelt, auf denen Schülerinnen und Schüler erkennbar sind. Der
+          fertige Film wird in der Aula vor der ganzen Schule vorgeführt. Die
           Aufnahmen werden ausschließlich für diesen Film verwendet, auf Servern innerhalb der
           EU gespeichert und spätestens {{ retentionMonths }} Monate nach der Abiturfeier
           gelöscht. Die Einwilligung kann jederzeit ohne Nachteile widerrufen werden.
@@ -62,7 +63,7 @@ import { CONTACT, RETENTION_MONTHS, SCHOOL_NAME } from '../../core/config';
 
         <p class="mb-6 text-sm">
           Hiermit willige ich ein, dass Bild- und Videoaufnahmen meines Kindes im Rahmen des
-          oben beschriebenen Abifilms verarbeitet und im Film gezeigt werden dürfen.
+          oben beschriebenen Abifilms verarbeitet und im Film gezeigt werden dürfen, der in der Aula vor der ganzen Schule vorgeführt wird.
         </p>
 
         <div class="mb-8 flex flex-wrap gap-x-10 gap-y-8 text-sm">

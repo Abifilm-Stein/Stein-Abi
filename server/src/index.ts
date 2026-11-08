@@ -20,7 +20,7 @@ import {
 import { formatCode, generateCode, hashCode, hashIp, issueToken, readTeamToken, readToken, signIn, signInTeam, type Session } from './session.js';
 
 /** Keep in sync with CONSENT_VERSION in src/app/core/config.ts. */
-const CONSENT_VERSION = '2026-11-08';
+const CONSENT_VERSION = '2026-11-08-2';
 
 type Vars = { session: Session };
 const app = new Hono<{ Variables: Vars }>();
