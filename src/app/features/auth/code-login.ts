@@ -10,7 +10,7 @@ import { isDemoMode } from '../../core/runtime-config';
     <div class="card mx-auto max-w-md p-6">
       <h1 class="mb-1 text-2xl font-bold">Anmelden</h1>
       <p class="mb-6 text-sm text-muted">
-        Gib den persönlichen Code ein, den du vom Abifilm-Team bekommen hast. Ein Konto musst
+        Gib den persönlichen Code aus der E-Mail vom Abifilm-Team ein. Ein Konto musst
         du nicht anlegen, der Code ist deine Anmeldung.
       </p>
 

@@ -10,16 +10,16 @@ const WANTED = [
     text: 'Direkt vom Handy, nicht über WhatsApp weitergeleitet. Dort wird alles komprimiert.',
   },
   {
-    title: 'Auch Unspektakuläres',
-    text: 'Pausenhof, Bus, Wartezeiten. Genau das macht später den Film aus.',
+    title: 'Alltag und Quatsch',
+    text: 'Freistunden, Busfahrten, Unfug im Unterricht. Genau das erkennt später jeder wieder.',
   },
   {
     title: 'Quer und hochkant',
     text: 'Beides ist brauchbar. Hochkant lässt sich im Schnitt verwenden, also lieber mitschicken.',
   },
   {
-    title: 'Alte Aufnahmen',
-    text: 'Klassenfahrten aus Stufe 6 sind Gold wert. Grabt in euren Galerien.',
+    title: 'Alte Fundstücke',
+    text: 'Klassenfahrten, Ausflüge, Schulfeste von früher. Scroll mal ganz weit nach unten in deiner Galerie.',
   },
 ];
 
@@ -39,8 +39,8 @@ const WANTED = [
       </h1>
 
       <p class="mb-8 max-w-2xl text-lg text-muted">
-        Neun Jahre {{ schoolName }} in einem Film, und dafür brauchen wir dein
-        Material. Hochladen dauert keine zwei Minuten, ein Konto brauchst du nicht.
+        Neun Jahre {{ schoolName }} sollen in einen Film. Dafür suchen wir, was bei
+        euch auf dem Handy liegt. Hochladen geht schnell, ein Konto brauchst du nicht.
       </p>
 
       <div class="flex flex-wrap items-center gap-4">
@@ -58,8 +58,8 @@ const WANTED = [
 
       @if (!session.isSignedIn()) {
         <p class="mt-4 max-w-2xl text-sm text-muted">
-          Du brauchst nur den persönlichen Code, den du vom Abifilm-Team bekommen hast.
-          Kein Konto anlegen, keine E-Mail-Adresse.
+          Du brauchst nur den persönlichen Code aus der E-Mail vom Abifilm-Team.
+          Registrieren musst du dich nicht.
         </p>
       }
 

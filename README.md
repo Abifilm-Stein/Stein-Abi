@@ -201,7 +201,7 @@ die Upload-Chunks.
 - [ ] Alle `⟨Platzhalter⟩` in `core/config.ts`, `/impressum`, `/datenschutz` ersetzen
 - [ ] Datenschutzerklärung und Impressum von Schulleitung und Datenschutzbeauftragten
       freigeben lassen — der Entwurf ist **nicht juristisch geprüft**
-- [ ] Einsendeschluss bestätigen (aktuell 31.03.2027, geraten)
+- [x] Einsendeschluss: 31.12.2026
 - [ ] Echte Team-Authentifizierung über IAP; der Demo-Login ist ein Platzhalter
 - [ ] Offizielles Schulgrün in `src/styles.css` eintragen, falls vorhanden
 - [x] Security-Header setzen — `public/_headers`
