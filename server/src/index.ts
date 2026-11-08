@@ -423,6 +423,28 @@ app.post('/internal/cleanup', async (c) => {
   return c.json({ deleted: await deleteOrphanedObjects(24) });
 });
 
+/**
+ * The team may delete any file, e.g. a failed take or something that should
+ * not be in the film. Object first, then the record (see deleteMedia). An open
+ * withdrawal request for the file is closed as done, since the material is gone.
+ */
+app.delete('/admin/media/:id', requireTeam, async (c) => {
+  const id = c.req.param('id');
+  const snapshot = await collections.media.doc(id).get();
+  if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);
+
+  const doc = snapshot.data() as MediaDoc;
+  await deleteMedia(id, doc.userId);
+
+  if (doc.openWithdrawal) {
+    await collections.withdrawals
+      .doc(doc.openWithdrawal.id)
+      .update({ status: 'erledigt', resolutionNote: 'Vom Team geloescht.', resolvedAt: nowIso() })
+      .catch(() => undefined);
+  }
+  return c.body(null, 204);
+});
+
 app.get('/admin/media/:id/url', requireTeam, async (c) => {
   const snapshot = await collections.media.doc(c.req.param('id')).get();
   if (!snapshot.exists) return c.json({ error: 'Nicht gefunden.' }, 404);

@@ -158,6 +158,9 @@ const STATUSES: ReviewStatus[] = ['neu', 'gesichtet', 'verwendet', 'aussortiert'
                 <button type="button" class="btn btn-ghost btn-sm" (click)="open(item)">
                   Ansehen
                 </button>
+                <button type="button" class="btn btn-ghost btn-sm" (click)="remove(item)">
+                  Löschen
+                </button>
                 <label class="sr-only" [attr.for]="'status-' + item.id">
                   Status von {{ item.title }}
                 </label>
@@ -265,6 +268,24 @@ export class TeamDashboard implements OnInit {
       window.open(await this.gateway.adminSignedUrl(item.id), '_blank', 'noopener');
     } catch {
       this.actionError.set('Die Datei konnte nicht geöffnet werden.');
+    }
+  }
+
+  protected async remove(item: MediaItem): Promise<void> {
+    if (
+      !confirm(
+        `„${item.title}“ von ${item.uploaderName} endgültig löschen? Die Datei lässt sich nicht wiederherstellen.`,
+      )
+    ) {
+      return;
+    }
+
+    this.actionError.set(null);
+    try {
+      await this.gateway.adminDelete(item.id);
+      this.items.update((entries) => entries.filter((entry) => entry.id !== item.id));
+    } catch {
+      this.actionError.set('Die Datei konnte nicht gelöscht werden.');
     }
   }
 

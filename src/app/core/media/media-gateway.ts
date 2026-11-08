@@ -33,6 +33,7 @@ export abstract class MediaGateway {
   /* Team only. These routes require the team token from POST /auth/sign-in. */
   abstract listAll(): Promise<MediaItem[]>;
   abstract adminSignedUrl(mediaId: string): Promise<string>;
+  abstract adminDelete(mediaId: string): Promise<void>;
   abstract setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void>;
   abstract listAccounts(): Promise<AccountSummary[]>;
   abstract resetCode(accountId: string): Promise<string>;
@@ -120,6 +121,12 @@ export class HttpMediaGateway implements MediaGateway {
       }),
     );
     return result.url;
+  }
+
+  async adminDelete(mediaId: string): Promise<void> {
+    await firstValueFrom(
+      this.http.delete(`${this.base}/admin/media/${mediaId}`, { headers: this.teamHeaders() }),
+    );
   }
 
   async setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void> {
@@ -257,6 +264,10 @@ export class LocalMediaGateway implements MediaGateway {
 
   async adminSignedUrl(): Promise<string> {
     throw new Error('Im Demo-Modus gibt es keine gespeicherten Dateien.');
+  }
+
+  async adminDelete(mediaId: string): Promise<void> {
+    this.write(this.read().filter((item) => item.id !== mediaId));
   }
 
   async setReviewStatus(mediaId: string, status: ReviewStatus): Promise<void> {
