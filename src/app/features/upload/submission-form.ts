@@ -82,7 +82,7 @@ import { MediaMetadata } from '../../core/models';
             class="field-input"
             rows="3"
             formControlName="description"
-            placeholder="z. B. „Busfahrt nach Rom, Herr ⟨Name⟩ schläft im Hintergrund“"
+            placeholder="z. B. „Busfahrt nach London, Herr ⟨Name⟩ schläft im Hintergrund“"
           ></textarea>
         </div>
       </div>
